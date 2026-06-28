@@ -7,19 +7,20 @@
 #include <QVector>
 
 // figures
-const QString wK = QString::fromUtf8("\u2654");
-const QString wQ = QString::fromUtf8("\u2655");
-const QString wR = QString::fromUtf8("\u2656");
-const QString wB = QString::fromUtf8("\u2657");
-const QString wN = QString::fromUtf8("\u2658");
-const QString wP = QString::fromUtf8("\u2659");
+const QString wK = "wK"; // QString::fromUtf8("\u265A");
+const QString wQ = "wQ"; // QString::fromUtf8("\u265B");
+const QString wR = "wR"; // QString::fromUtf8("\u265C");
+const QString wB = "wB"; // QString::fromUtf8("\u265D");
+const QString wN = "wN"; // QString::fromUtf8("\u265E");
+const QString wP = "wP"; // QString::fromUtf8("\u265F");
 
-const QString bK = QString::fromUtf8("\u265A");
-const QString bQ = QString::fromUtf8("\u265B");
-const QString bR = QString::fromUtf8("\u265C");
-const QString bB = QString::fromUtf8("\u265D");
-const QString bN = QString::fromUtf8("\u265E");
-const QString bP = QString::fromUtf8("\u265F");
+const QString bK = "bK"; // QString::fromUtf8("\u265A");
+const QString bQ = "bQ"; // QString::fromUtf8("\u265B");
+const QString bR = "bR"; // QString::fromUtf8("\u265C");
+const QString bB = "bB"; // QString::fromUtf8("\u265D");
+const QString bN = "bN"; // QString::fromUtf8("\u265E");
+const QString bP = "bP"; // QString::fromUtf8("\u265F");
+
 const int BOARD_SIZE = 4;
 
 class BoardScanner : public QObject

@@ -33,7 +33,7 @@ BoardScanner::BoardScanner(QObject *parent)
         if(i < 16)
             num = i;
         else
-            num = 16 - i;
+            num = i - 16;
 
         dec2bin(num);
 
@@ -55,8 +55,8 @@ BoardScanner::BoardScanner(QObject *parent)
         else
             int temp = bcm2835_gpio_lev(mux_out_2);
         
-        new_state[32 + i] = temp;
-        old_state[32 + i] = temp;
+        new_state[i] = temp;
+        old_state[i] = temp;
     }
     
     for (int i = 0; i < 32; i++) {
@@ -65,7 +65,7 @@ BoardScanner::BoardScanner(QObject *parent)
         if(i < 16)
             num = i;
         else
-            num = 16 - i;
+            num = i - 16;
 
         dec2bin(num);
 
@@ -179,7 +179,7 @@ void BoardScanner::scanBoard()
         if(i < 16)
             num = i;
         else
-            num = 16 - i;
+            num = i - 16;
 
         dec2bin(num);
 
@@ -201,7 +201,7 @@ void BoardScanner::scanBoard()
         else
             int temp = bcm2835_gpio_lev(mux_out_2);
         
-        new_state[32 + i] = temp;
+        new_state[i] = temp;
     }
     
     for (int i = 0; i < 32; i++) {
@@ -210,7 +210,7 @@ void BoardScanner::scanBoard()
         if(i < 16)
             num = i;
         else
-            num = 16 - i;
+            num = i - 16;
 
         dec2bin(num);
 
@@ -252,18 +252,16 @@ void BoardScanner::scanBoard()
                 emit square_changed(row, col, field, figPickedUp);
             }           
         }
-
         old_state[i] = new_state[i];
     }
 
-    
     for (int i = 0; i < 32; i++) {
         int row, col;
         bool figPickedUp;
-        row = 7 - (i % 4);
-        col = 7 - (i / 4);
-        if (old_state[i] != new_state[i]) {
-            if(new_state[i]){
+        row = 4 + (i % 4);
+        col = i / 4;
+        if (old_state[32 + i] != new_state[32 + i]) {
+            if(new_state[32 + i]){
                 field = board[row][col];
                 board[row][col] = "";
                 figPickedUp = true;
@@ -274,7 +272,6 @@ void BoardScanner::scanBoard()
                 emit square_changed(row, col, field, figPickedUp);
             }           
         }
-
         old_state[32 + i] = new_state[32 + i];
     }
 }

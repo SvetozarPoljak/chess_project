@@ -7,7 +7,7 @@ Dialog::Dialog(QWidget *parent)
       row(0), col(0)
 {
     this->setFixedSize(650, 450);
-    this->setWindowTitle("Sah Tabla 4x4");
+    this->setWindowTitle("Chess Board");
 
     // GUI
     mainLayout = new QHBoxLayout(this);
@@ -80,7 +80,7 @@ Dialog::Dialog(QWidget *parent)
 }
 
 Dialog::~Dialog()
-{
+{ 
     scanner->stop();
     scannerThread->quit();
     scannerThread->wait();
@@ -92,16 +92,7 @@ Dialog::~Dialog()
 
 void Dialog::on_square_changed(int row, int col, QString field, bool figPickedUp)
 {
-    if(row < 4){
-	    if ((3 - this->row + this->col) % 2 == 0) {
-	        guiBoard[3 - this->row][this->col]->setStyleSheet(
-	            "background-color: #eeeed2; color: #769656; font-weight: bold;  ");
-	    } else {
-	        guiBoard[3 - this->row][this->col]->setStyleSheet(
-	            "background-color: #769656; color: #eeeed2; font-weight: bold;  ");
-	    }
-    }else{
-
+    //if(this->row < 4){
 	    if ((7 - this->row + this->col) % 2 == 0) {
 	        guiBoard[7 - this->row][this->col]->setStyleSheet(
 	            "background-color: #eeeed2; color: #769656; font-weight: bold;  ");
@@ -109,14 +100,23 @@ void Dialog::on_square_changed(int row, int col, QString field, bool figPickedUp
 	        guiBoard[7 - this->row][this->col]->setStyleSheet(
 	            "background-color: #769656; color: #eeeed2; font-weight: bold;  ");
 	    }
-    }
+    //}else{
+/*
+	    if ((7 - this->row + this->col) % 2 == 0) {
+	        guiBoard[4 + 7 - this->row][this->col]->setStyleSheet(
+	            "background-color: #eeeed2; color: #769656; font-weight: bold;  ");
+	    } else {
+	        guiBoard[4 + 7 - this->row][this->col]->setStyleSheet(
+	            "background-color: #769656; color: #eeeed2; font-weight: bold;  ");
+	    }
+    }*/
     this->row = row;
     this->col = col;
     logicBoard[row][col] = field;
     refreshField(row, col); // reset pa highlight
-    if(row < 4)
-        guiBoard[3 - row][col]->setStyleSheet("background-color: yellow;  ");
-    else
+    //if(row < 4)
+       // guiBoard[3 - row][col]->setStyleSheet("background-color: yellow;  ");
+   // else
         guiBoard[7 - row][col]->setStyleSheet("background-color: yellow;  ");
     
     if (!figPickedUp) {
@@ -129,26 +129,38 @@ void Dialog::on_square_changed(int row, int col, QString field, bool figPickedUp
 
 void Dialog::refreshField(int r, int c)
 {
-    if(row < 4){
-	    if ((3 - this->row + this->col) % 2 == 0) {
-	        guiBoard[3 - this->row][this->col]->setStyleSheet(
-	            "background-color: #eeeed2; color: #769656; font-weight: bold;  ");
-	    } else {
-	        guiBoard[3 - this->row][this->col]->setStyleSheet(
-	            "background-color: #769656; color: #eeeed2; font-weight: bold;  ");
-	    }
-            guiBoard[3 - r][c]->setText(logicBoard[r][c]);
-    }else{
+    QString backgroundColor = ((7 - r + c) % 2 == 0) ? "#eeeed2" : "#769656";
 
-	    if ((7 - this->row + this->col) % 2 == 0) {
-	        guiBoard[7 - this->row][this->col]->setStyleSheet(
-	            "background-color: #eeeed2; color: #769656; font-weight: bold;  ");
-	    } else {
-	        guiBoard[7 - this->row][this->col]->setStyleSheet(
-	            "background-color: #769656; color: #eeeed2; font-weight: bold;  ");
-	    }
-            guiBoard[7 - r][c]->setText(logicBoard[r][c]);
+    QString figure = logicBoard[r][c];
+    QString figure_color, figure_style;
+    
+    if(figure == wP || figure == wK || figure == wQ || figure == wB || figure == wN || figure == wR){
+        figure_color = "white";
+    }else{
+        figure_color = "black";
     }
+    
+    guiBoard[7 - r][c]->setStyleSheet("background-color: " + backgroundColor + ";" + "color: " + figure_color + "; font-weight: bold;");
+
+    if(figure == wK || figure == bK)
+        figure_style = QString::fromUtf8("\u265A");
+       
+    if(figure == wQ || figure == bQ)
+        figure_style = QString::fromUtf8("\u265B");
+        
+    if(figure == wR || figure == bR)
+        figure_style = QString::fromUtf8("\u265C");
+        
+    if(figure == wB || figure == bB)
+        figure_style = QString::fromUtf8("\u265D");
+       
+    if(figure == wN || figure == bN)
+        figure_style = QString::fromUtf8("\u265E");
+    
+    if(figure == wP || figure == bP)
+        figure_style = QString::fromUtf8("\u265F");
+    
+    guiBoard[7 - r][c]->setText(figure_style);
 }
 
 void Dialog::boardInit()
