@@ -1,5 +1,0 @@
-/home/svetozar/chess_project/build/CMakeFiles/chess.dir
-/home/svetozar/chess_project/build/CMakeFiles/edit_cache.dir
-/home/svetozar/chess_project/build/CMakeFiles/rebuild_cache.dir
-/home/svetozar/chess_project/build/CMakeFiles/chess_autogen_timestamp_deps.dir
-/home/svetozar/chess_project/build/CMakeFiles/chess_autogen.dir
