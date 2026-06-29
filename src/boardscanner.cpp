@@ -51,25 +51,25 @@ BoardScanner::BoardScanner(QObject *parent)
         
         int temp; 
         if(i < 16)
-            int temp = bcm2835_gpio_lev(mux_out_1);
+            temp = bcm2835_gpio_lev(mux_out_1);
         else
-            int temp = bcm2835_gpio_lev(mux_out_2);
+            temp = bcm2835_gpio_lev(mux_out_2);
         
         new_state[i] = temp;
         old_state[i] = temp;
     }
     
-    for (int i = 0; i < 32; i++) {
+    for (int i = 63; i > 31; i--) {
 
         int num;
-        if(i < 16)
-            num = i;
+        if(63 - i < 16)
+            num = 63 - i;
         else
-            num = i - 16;
+            num = (63 - i) - 16;
 
         dec2bin(num);
 
-        if(i < 16){
+        if(63 - i < 16){
             for (int j = 0; j < 4; j++) {
                 bcm2835_gpio_write(mux_sel_3[j], nbin[j]);
             }
@@ -82,13 +82,13 @@ BoardScanner::BoardScanner(QObject *parent)
         bcm2835_delay(5);
         
         int temp; 
-        if(i < 16)
-            int temp = bcm2835_gpio_lev(mux_out_3);
+        if(63 - i < 16)
+            temp = bcm2835_gpio_lev(mux_out_3);
         else
-            int temp = bcm2835_gpio_lev(mux_out_4);
+            temp = bcm2835_gpio_lev(mux_out_4);
         
-        new_state[32 + i] = temp;
-        old_state[32 + i] = temp;
+        new_state[i] = temp;
+        old_state[i] = temp;
     }
 
     board.resize(2*BOARD_SIZE);
@@ -197,24 +197,24 @@ void BoardScanner::scanBoard()
         
         int temp; 
         if(i < 16)
-            int temp = bcm2835_gpio_lev(mux_out_1);
+            temp = bcm2835_gpio_lev(mux_out_1);
         else
-            int temp = bcm2835_gpio_lev(mux_out_2);
+            temp = bcm2835_gpio_lev(mux_out_2);
         
         new_state[i] = temp;
     }
     
-    for (int i = 0; i < 32; i++) {
+    for (int i = 63; i > 31; i--) {
 
         int num;
-        if(i < 16)
-            num = i;
+        if(63 - i < 16)
+            num = 63 - i;
         else
-            num = i - 16;
+            num = (63 - i) - 16;
 
         dec2bin(num);
 
-        if(i < 16){
+        if(63 - i < 16){
             for (int j = 0; j < 4; j++) {
                 bcm2835_gpio_write(mux_sel_3[j], nbin[j]);
             }
@@ -227,12 +227,12 @@ void BoardScanner::scanBoard()
         bcm2835_delay(5);
         
         int temp; 
-        if(i < 16)
-            int temp = bcm2835_gpio_lev(mux_out_3);
+        if(63 - i < 16)
+            temp = bcm2835_gpio_lev(mux_out_3);
         else
-            int temp = bcm2835_gpio_lev(mux_out_4);
+            temp = bcm2835_gpio_lev(mux_out_4);
         
-        new_state[32 + i] = temp;
+        new_state[i] = temp;
     }
 	
     for (int i = 0; i < 32; i++) {

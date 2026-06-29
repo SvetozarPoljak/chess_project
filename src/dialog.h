@@ -49,11 +49,14 @@ private:
     QLabel *blackClockLabel;
     QLabel *statusLabel; 
     QProgressBar *evalBar;
+    QLabel *Clock;
+    QLabel *whiteClock, *blackClock;
 
     int row;
     int col;
 
     void refreshField(int r, int c);
-    void boardInit(); 
+    void boardInit();
+   void updateClockStyles(); 
 };
 #endif

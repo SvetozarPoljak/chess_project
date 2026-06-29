@@ -13,6 +13,7 @@ Dialog::Dialog(QWidget *parent)
     mainLayout = new QHBoxLayout(this);
 
     QPushButton *closeButton = new QPushButton("X", this);
+    closeButton->setFocusPolicy(Qt::NoFocus);
     closeButton->setStyleSheet(
         "QPushButton {"
         "  background-color: #ff4d4d;"
@@ -40,12 +41,35 @@ Dialog::Dialog(QWidget *parent)
 
     boardInit();
 
+
+    Clock = new QLabel(this);
+    Clock->setGeometry(750, 350, 90, 175);
+    Clock->setStyleSheet(
+        "QWidget { "
+        "  background-color: #aaaaaa; "
+        "}"
+    );
+    whiteClock = new QLabel(Clock);
+    whiteClock->setGeometry(5, 5, 80, 80);
+
+    blackClock = new QLabel(Clock);
+    blackClock->setGeometry(5, 90, 80, 80);
+ 
+    updateClockStyles();
+
+    whiteClockLabel = new QLabel(whiteClock);
+    whiteClockLabel->setGeometry(0, 0, 80, 80);
+   // whiteClockLabel->setAlignment(Qt::AlignCenter);
+    
+    blackClockLabel = new QLabel(blackClock);
+    blackClockLabel->setGeometry(0, 0, 80, 80);
+   // blackClockLabel->setAlignment(Qt::AlignCenter);
+
+
     chessClockTimer = new QTimer(this);
     connect(chessClockTimer, &QTimer::timeout,
             this, &Dialog::update_chess_clocks);
 
-    whiteClockLabel = new QLabel(this);
-    blackClockLabel = new QLabel(this);
     statusLabel = new QLabel(this);
 
     // dodaj ih u layout, npr:
@@ -119,9 +143,9 @@ void Dialog::on_square_changed(int row, int col, QString field, bool figPickedUp
    // else
         guiBoard[7 - row][col]->setStyleSheet("background-color: yellow;  ");
     
-    if (!figPickedUp) {
-        whiteToMove = !whiteToMove;
-    }
+    //if (!figPickedUp) {
+      //  whiteToMove = !whiteToMove;
+   // }
 
     int eval = 20 + (rand() % 60);
     evalBar->setValue(eval);
@@ -256,7 +280,26 @@ void Dialog::update_chess_clocks()
 void Dialog::keyPressEvent(QKeyEvent *event){
     if(event->key() == Qt::Key_Escape){
         ::kill(::getpid(), SIGKILL);
+    }else if(event->key() == Qt::Key_Space){
+        whiteToMove != whiteToMove;
+        updateClockStyles();
+        //update_chess_clocks();
     }else{
         QDialog::keyPressEvent(event);
+    }
+}
+
+void Dialog::updateClockStyles(){
+    QString highlightedWhiteStyle = "border: 4px solid #000000; background-color: #ffffff; color: #000000;";
+    QString highlightedBlackStyle = "border: 4px solid #ffffff; background-color: #000000; color: #ffffff;";
+    QString defaultWhiteStyle = "border: 1px solid #000000; background-color: #222222; color: #000000;";
+    QString defaultBlackStyle = "border: 1px solid #ffffff; background-color: #888888; color: #ffffff;";
+
+    if(whiteToMove){
+        whiteClock->setStyleSheet(highlightedWhiteStyle);
+        blackClock->setStyleSheet(defaultBlackStyle);
+    }else{
+        whiteClock->setStyleSheet(defaultWhiteStyle);
+        blackClock->setStyleSheet(highlightedBlackStyle);
     }
 }
