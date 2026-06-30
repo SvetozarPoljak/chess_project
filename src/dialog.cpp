@@ -178,12 +178,10 @@ void Dialog::on_square_changed(int row, int col, QString field, bool figPickedUp
         figure_color = "black";
     }
     guiBoard[7 - row][col]->setStyleSheet(
-        "QLabel { "
-            "background-color: yellow; " 
-            "color: " + figure_color + "; " 
-            "font-weight: bold" + 
-            "padding: 0px; margin: 0px; border: 0px;"
-        "}"
+        "background-color: yellow; "
+        "color: " + figure_color + "; "
+        "font-weight: bold; "
+        "padding: 0px; margin: 0px; border: 0px;"
     );
     
     //if (!figPickedUp) {
@@ -208,12 +206,9 @@ void Dialog::refreshField(int r, int c)
     }
 
     guiBoard[7 - r][c]->setStyleSheet(
-        "QLabel { "
-            "background-color: " + backgroundColor + ";" + 
-            "color: " + figure_color + "; " + 
-            "font-weight: bold" + 
-            "padding: 0px; margin: 0px; border: 0px;"
-        "}"
+        "background-color: " + backgroundColor + "; "
+        "color: " + figure_color + "; "
+        "font-weight: bold padding: 0px; margin: 0px; border: 0px;"
     );
 
     if(figure == wK || figure == bK)
@@ -247,7 +242,7 @@ void Dialog::boardInit()
             field->setIndent(0);
             field->setAlignment(Qt::AlignCenter);
             
-            field->setStyleSheet("QLabel { padding: 0px; margin: 0px; border: 0px; }");
+            field->setStyleSheet("padding: 0px; margin: 0px; border: 0px;");
 
             QFont f;
             f.setPixelSize(56);
