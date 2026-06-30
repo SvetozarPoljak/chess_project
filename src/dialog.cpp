@@ -208,7 +208,7 @@ void Dialog::refreshField(int r, int c)
     guiBoard[7 - r][c]->setStyleSheet(
         "background-color: " + backgroundColor + "; "
         "color: " + figure_color + "; "
-        "font-weight: bold padding: 0px; margin: 0px; border: 0px;"
+        "font-weight: bold; padding: 0px; margin: 0px; border: 0px;"
     );
 
     if(figure == wK || figure == bK)
