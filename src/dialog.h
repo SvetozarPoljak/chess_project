@@ -6,6 +6,7 @@
 #include <QLabel>
 #include <QProgressBar>
 #include <QTimer>
+#include <QTextEdit>
 #include <vector>
 #include "boardscanner.h"
 #include <QThread>
@@ -24,6 +25,7 @@ public:
 private slots:     
     void update_chess_clocks();
     void on_square_changed(int row, int col, QString field, bool figPickedUp); 
+    void moveMaker(int row, int col, QString field, bool figPickedUp);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -34,9 +36,15 @@ private:
     QHBoxLayout *mainLayout;
     QGridLayout *boardLayout;
     QVBoxLayout *rightPanelLayout;
+    QTextEdit *moveText;
 
     std::vector<std::vector<QLabel*>> guiBoard;
     std::vector<std::vector<QString>> logicBoard; 
+
+    chess::Board board;
+    std::vector<chess::Move> history;
+    int fromSquare = -1;
+    int toSquare = -1;
 
     QTimer *scanningTimer;
     QTimer *chessClockTimer;

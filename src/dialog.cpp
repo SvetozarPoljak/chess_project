@@ -12,10 +12,8 @@ Dialog::Dialog(QWidget *parent)
 
     this->setFixedSize(200+BOARD_LEN, 100+BOARD_LEN);
     this->setWindowTitle("Chess Board");
-    // this->setStyleSheet("QDialog { background-color: #2c3e50; }");
 
     // GUI
-    //mainLayout = new QHBoxLayout(this);
     QWidget *boardContainer = new QWidget(this);
     boardContainer->setGeometry(BOARD_X, BOARD_Y, BOARD_LEN, BOARD_LEN);
 
@@ -41,7 +39,6 @@ Dialog::Dialog(QWidget *parent)
     boardLayout->setAlignment(Qt::AlignCenter);
     boardLayout->setSpacing(0);
     boardLayout->setContentsMargins(0,0,0,0);
-    //mainLayout->addLayout(boardLayout);
 
     guiBoard.resize(2*BOARD_SIZE, std::vector<QLabel*>(2*BOARD_SIZE, nullptr));
     logicBoard.resize(2*BOARD_SIZE, std::vector<QString>(2*BOARD_SIZE, ""));
@@ -50,6 +47,11 @@ Dialog::Dialog(QWidget *parent)
 
     const int CLK_X = BOARD_X + BOARD_LEN + 30;
     const int CLK_Y = BOARD_Y + (BOARD_LEN/2);
+
+    moveText = new QTextEdit(this);
+    moveText->setGeometry(CLK_X + 100, CLK_Y, 200, 300);
+    moveText->setReadOnly(true);
+    moveText->setLineWrapMode(QTextEdit::NoWrap);
 
     Clock = new QLabel(this);
     Clock->setGeometry(CLK_X, CLK_Y, 70, 85);
@@ -83,20 +85,10 @@ Dialog::Dialog(QWidget *parent)
     statusLabel->setGeometry(CLK_X, CLK_Y + 100, 70, 40);
     statusLabel->setStyleSheet("color: black; font-weight: bold;");
 
-    // dodaj ih u layout, npr:
-   // QVBoxLayout *infoLayout = new QVBoxLayout();
-   // infoLayout->addWidget(whiteClockLabel);
-   // infoLayout->addWidget(blackClockLabel);
-    //infoLayout->addWidget(statusLabel);
-   // mainLayout->addLayout(infoLayout);
-
-    evalBar = new QProgressBar(this);
-//    evalBar->setGeometry()
-    
+    evalBar = new QProgressBar(this);    
     evalBar->setValue(50);
     evalBar->setOrientation(Qt::Vertical);
     evalBar->setGeometry(BOARD_X-30, BOARD_Y, 30, BOARD_LEN);
-   // mainLayout->addWidget(evalBar);
 
     // Scanner thread
     scanner = new BoardScanner(nullptr);
@@ -109,6 +101,10 @@ Dialog::Dialog(QWidget *parent)
 
     connect(scanner, &BoardScanner::square_changed,
             this, &Dialog::on_square_changed,
+            Qt::QueuedConnection);
+
+    connect(scanner, &BoardScanner::square_changed,
+            this, &Dialog::moveMaker,
             Qt::QueuedConnection);
 
     // tek onda pokreni timer
@@ -124,52 +120,47 @@ Dialog::~Dialog()
 
     delete scanner;
     delete scannerThread;
+}
 
+void Dialog::moveMaker(int row, int col, QString field, bool figPickedUp)
+{
+    if(figPickedUp){
+        fromSquare = row * 8 + col;
+    }else{
+        toSquare = row * 8 + col;
+        chess::Movelist legal;
+        chess::movegen::legalmoves(legal, board);
+        chess::Move move;
+        bool exists = false;
+
+        for(const auto &m : legal){
+            if(m.from() == fromSquare && m.to() == toSquare){
+                move = m;
+                exists = true;
+                break;
+            }
+        }
+        
+        if(exists){
+            board.makeMove(move);
+            history.push_back(move);
+            std::string uci_mv_s = chess::uci::moveToUci(move);
+            moveText->append(QString::fromStdString(uci_mv_s));
+            QTextCursor c = moveText->textCursor();
+            c.movePosition(QTextCursor::End);
+            moveText->setTextCursor(c);
+        }
+    }
 }
 
 void Dialog::on_square_changed(int row, int col, QString field, bool figPickedUp)
 {
-    
-//logicBoard[this->row][this->col] = field;
-   /* QString figure_color;
-    if(field == wP || field == wK || field == wQ || field == wB || field == wN || field == wR){
-        figure_color = "white";
-    }else{
-        figure_color = "black";
-    }
-    //if(this->row < 4){
-	    if ((7 - this->row + this->col) % 2 == 0) {
-	        guiBoard[7 - this->row][this->col]->setStyleSheet(
-	            "background-color: #eeeed2; color:" + figure_color + " #769656; font-weight: bold;  ");
-	    } else {
-	        guiBoard[7 - this->row][this->col]->setStyleSheet(
-	            "background-color: #769656; color:" + figure_color + " #eeeed2; font-weight: bold;  ");
-	    }
-    //}else{
-/*
-	    if ((7 - this->row + this->col) % 2 == 0) {
-	        guiBoard[4 + 7 - this->row][this->col]->setStyleSheet(
-	            "background-color: #eeeed2; color: #769656; font-weight: bold;  ");
-	    } else {
-	        guiBoard[4 + 7 - this->row][this->col]->setStyleSheet(
-	            "background-color: #769656; color: #eeeed2; font-weight: bold;  ");
-	    }
-    }*/
     refreshField(this->row, this->col);
     
     this->row = row;
     this->col = col;
     logicBoard[row][col] = field;
-    //QString figure_color;
-  //  if(field == wP || field == wK || field == wQ || field == wB || field == wN || field == wR){
-    //    figure_color = "white";
-   // }else{
-     //   figure_color = "black";
-  //  }
     refreshField(row, col); // reset pa highlight
-    //if(row < 4)
-       // guiBoard[3 - row][col]->setStyleSheet("background-color: yellow;  ");
-   // else
 
     QString figure_color;
     if(field == wP || field == wK || field == wQ || field == wB || field == wN || field == wR){
@@ -183,13 +174,9 @@ void Dialog::on_square_changed(int row, int col, QString field, bool figPickedUp
         "font-weight: bold; "
         "padding: 0px; margin: 0px; border: 0px;"
     );
-    
-    //if (!figPickedUp) {
-      //  whiteToMove = !whiteToMove;
-   // }
-
+    /*
     int eval = 20 + (rand() % 60);
-    evalBar->setValue(eval);
+    evalBar->setValue(eval);*/
 }
 
 void Dialog::refreshField(int r, int c)

@@ -5,6 +5,7 @@
 #include <vector>
 #include <atomic>
 #include <QVector>
+#include "chess.hpp"
 
 // figures
 const QString wK = "wK"; // QString::fromUtf8("\u265A");
