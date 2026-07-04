@@ -34,8 +34,7 @@ public:
     QVector<QVector<QString>> board;
 
 signals:
-   // void square_changed(int row, int col, QString field, bool figPickedUp);
-   void boardChanged(const int* new_state);
+    void square_changed(int square, int figPickedUp, const int* new_state);
 
 public slots:
     void process();

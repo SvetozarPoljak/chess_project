@@ -4,7 +4,7 @@
 Dialog::Dialog(QWidget *parent)
     : QDialog(parent),
       timeWhite(300), timeBlack(300), whiteToMove(true), 
-      row(0), col(0), illegal(false), moveInProgress(0)
+      row(0), col(0), illegal(false), moveInProgress(0), castlingSequenceInProgress(false)
 {
     const int BOARD_X = 600;
     const int BOARD_Y = 200;
@@ -103,7 +103,7 @@ Dialog::Dialog(QWidget *parent)
             this, &Dialog::on_square_changed,
             Qt::QueuedConnection);
    */
-    connect(scanner, &BoardScanner::boardChanged,
+    connect(scanner, &BoardScanner::square_changed,
             this, &Dialog::moveMaker,
             Qt::QueuedConnection);
 
@@ -122,7 +122,7 @@ Dialog::~Dialog()
     delete scannerThread;
 } 
 
-void Dialog::moveMaker(const int* new_state)//(int row, int col, QString field, bool figPickedUp)
+void Dialog::moveMaker(int square, int figPickedUp, const int* new_state)//(int row, int col, QString field, bool figPickedUp)
 {
   /*  if(figPickedUp && numOfPickedPieces < 3){
 
@@ -264,41 +264,89 @@ void Dialog::moveMaker(const int* new_state)//(int row, int col, QString field, 
     }*/
     int occupied;
     if(!illegal){
+       /* int new_change, on_square;
         statusLabel->clear();
         for(int sq = 0; sq < 64; sq++){
             chess::Piece piece = board.at(chess::Square(sq));
             if(piece != chess::Piece::NONE) occupied = 0;
             else occupied = 1;
             if(new_state[sq] != occupied){
-                if(new_state[sq]){
-                    if(!moveInProgress){
-                        fromSquare = sq;
-                        moveInProgress = 1;
-                    }
+               // new_change = 1;
+                on_square = sq;
+                break;
+            }
+           // else{
+             //   new_change = 0;
+           // }
+        }
+       // if(new_change){*/
+            if(figPickedUp){
+                if(!moveInProgress){
+                    fromSquare[0] = square;
+                    moveInProgress = 1;
+                }else{
+                    fromSquare[1] = square;
+                }
                    // QString figure = boardToQStringPiece(board, fromSquare / 8, fromSquare % 8);
                    // on_square_changed(fromSquare / 8, fromSquare % 8, figure, true);
                    // break;
-                }else{
-                    toSquare = sq;
-                    moveInProgress = 0;
-                   // if(fromSquare != toSquare){
-                        illegal = true;
+            }else{
+                toSquare = square;
+                int moveFromSquare;
+                if(fromSquare[1] != -1)
+                    moveFromSquare = fromSquare[1];
+                else
+                    moveFromSquare = fromSquare[0];
+
+                if(moveFromSquare != toSquare){
+                    illegal = true;
+                    
+                    exists = false;
+                    if(castlingSequenceInProgress == false){
                         chess::Movelist legal;
                         chess::movegen::legalmoves(legal, board);
-                        chess::Move move;
-                        bool exists = false;
-                                
+                        
                         for(const auto &m : legal){
-                            if(m.from() == fromSquare  && m.to() == toSquare){
+                            if(m.from() == moveFromSquare && m.to() == toSquare){
                                 move = m;
                                 exists = true;
                                 break;
                             }
                         }
+                    }else{
+                        if(nextLegalFromSquare != moveFromSquare || nextLegalToSquare != toSquare){
+                            exists = false;
+                           // illegal = true;
+                        }else{
+                            exists = true;
+                           // illegal = false;
+                           // castlingSequenceInProgress = false;
+                        }
+                    }
 
-                        if(exists){
-                   
-                            illegal = false;
+                    if(exists){
+                        if(move.typeOf() == chess::Move::CASTLING){
+                            if(castlingSequenceInProgress){
+                                castlingSequenceInProgress = false;
+                            }else
+                                castlingSequenceInProgress = true;
+
+                            if(chess::uci::moveToUci(move) == "e1g1"){
+                                nextLegalFromSquare = 7;
+                                nextLegalToSquare = 6;
+                            }else if(chess::uci::moveToUci(move) == "e1c1"){
+                                nextLegalFromSquare = 0;
+                                nextLegalToSquare = 3;
+                            }else if(chess::uci::moveToUci(move) == "e8g8"){
+                                nextLegalFromSquare = 63;
+                                nextLegalToSquare = 61;
+                            }else if(chess::uci::moveToUci(move) == "e8c8"){
+                                nextLegalFromSquare = 56;
+                                nextLegalToSquare = 59;
+                            }
+                        }
+                        illegal = false;
+                        if(castlingSequenceInProgress == false){
                             statusLabel->clear();
                             std::string uci_mv_s = chess::uci::moveToUci(move); 
                             moveText->append(QString::fromStdString(uci_mv_s));
@@ -308,28 +356,68 @@ void Dialog::moveMaker(const int* new_state)//(int row, int col, QString field, 
                     
                             board.makeMove(move);
                            // updateGuiBoard();
-                            for(int i = 0; i < 64; i++)
-                                refreshField(i/8, i%8);
+                            
                              
                             whiteToMove = !whiteToMove;
                             updateClockStyles();
+                        }
+                        for(int i = 0; i < 64; i++)
+                            refreshField(i/8, i%8);
             
+                    }else{
+                        statusLabel->setStyleSheet("color: red; font-weight: bold;");
+                        if(move.typeOf() == chess::Move::CASTLING){
+                            if(chess::uci::moveToUci(move) == "e1g1"){
+                                statusLabel->setText("Illegal action! White kingside castling is in the progress.\n Only legal action is placing rook on h1 to f1.");
+                            }else if(chess::uci::moveToUci(move) == "e1c1"){
+                                statusLabel->setText("Illegal action! White queenside castling is in the progress.\n Only legal action is placing rook on a1 to d1.");
+                            }else if(chess::uci::moveToUci(move) == "e8g8"){
+                                statusLabel->setText("Illegal action! Black kingside castling is in the progress.\n Only legal action is placing rook on h8 to f8.");
+                            }else if(chess::uci::moveToUci(move) == "e8c8"){
+                                statusLabel->setText("Illegal action! Black queenside castling is in the progress.\n Only legal action is placing rook on a8 to d8.");
+                            }
                         }else{
-                            statusLabel->setStyleSheet("color: red; font-weight: bold;");
                             statusLabel->setText("Illegal move! Undo move on the board and make legal move.");
-                            illegal = true;
-                            break;
-                        }   
-                  //  }
+                        }
+                        illegal = true;
+                    }   
                 }
-            } 
-        }
+                moveInProgress = 0;
+                fromSquare[0] = -1;
+                fromSquare[1] = -1;
+            }
+        //} 
     }else{
         illegal = false;
         for(int sq = 0; sq < 64; sq++){
             chess::Piece piece = board.at(chess::Square(sq));
+            
+            if(castlingSequenceInProgress){
+                if(chess::uci::moveToUci(move) == "e1g1"){
+                    if(sq == 4)
+                        piece = chess::Piece::NONE;
+                    else if(sq == 6)
+                        piece = chess::Piece::WHITEKING;
+                }else if(chess::uci::moveToUci(move) == "e1c1"){
+                    if(sq == 4)
+                        piece = chess::Piece::NONE;
+                    else if(sq == 2)
+                        piece = chess::Piece::WHITEKING;
+                }else if(chess::uci::moveToUci(move) == "e8g8"){
+                   if(sq == 60)
+                        piece = chess::Piece::NONE;
+                    else if(sq == 62)
+                        piece = chess::Piece::BLACKKING;
+                }else if(chess::uci::moveToUci(move) == "e8c8"){
+                    if(sq == 60)
+                        piece = chess::Piece::NONE;
+                    else if(sq == 58)
+                        piece = chess::Piece::BLACKKING;
+                }
+            }
             if(piece != chess::Piece::NONE) occupied = 0;
             else occupied = 1;
+
             if(new_state[sq] != occupied){
                 illegal = true;
                 break;
@@ -339,7 +427,7 @@ void Dialog::moveMaker(const int* new_state)//(int row, int col, QString field, 
             statusLabel->clear();
             statusLabel->setStyleSheet("color: black; font-weight: bold;");
             statusLabel->setText("Now make a legal move.");
-        }else{
+        }else if(!castlingSequenceInProgress){
             statusLabel->clear();
             statusLabel->setStyleSheet("color: red; font-weight: bold;");
             statusLabel->setText("Illegal move! Set table as depicted on the monitor.\nThat is last legal position.");
@@ -427,6 +515,31 @@ QString Dialog::boardToQStringPiece(const chess::Board& board, int row, int col)
     int sq = 8 * row + col;
     chess::Piece piece = board.at(chess::Square(sq));
     
+    if(castlingSequenceInProgress){
+        if(chess::uci::moveToUci(move) == "e1g1"){
+            if(sq == 4)
+                 piece = chess::Piece::NONE;
+            else if(sq == 6)
+                 piece = chess::Piece::WHITEKING;
+        }else if(chess::uci::moveToUci(move) == "e1c1"){
+            if(sq == 4)
+                 piece = chess::Piece::NONE;
+            else if(sq == 2)
+                 piece = chess::Piece::WHITEKING;
+        }else if(chess::uci::moveToUci(move) == "e8g8"){
+            if(sq == 60)
+                 piece = chess::Piece::NONE;
+            else if(sq == 62)
+                 piece = chess::Piece::BLACKKING;
+        }else if(chess::uci::moveToUci(move) == "e8c8"){
+            if(sq == 60)
+                 piece = chess::Piece::NONE;
+            else if(sq == 58)
+                 piece = chess::Piece::BLACKKING;
+        }
+    }
+
+
     if(piece == chess::Piece::NONE){
       pieceString = "";
     }else{

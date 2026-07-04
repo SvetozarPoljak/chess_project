@@ -279,32 +279,32 @@ void BoardScanner::scanBoard()
         }
     }
 
-    bool board_changed = false;
+   // bool board_changed = false;
     for (int i = 0; i < 64; i++) {
-      /*  int row, col;
-        bool figPickedUp;
+       // int row, col;
+        bool figPickedUp;/*
         row = i / 8;
         col = i % 8;
        */
         if (old_state[i] != new_state[i]) {
-          /*  if(new_state[i]){
-                field = board[row][col];
-                board[row][col] = "";
-                figPickedUp = true;
-                emit square_changed(row, col, "", figPickedUp);
+            if(new_state[i]){
+               // field = board[row][col];
+               // board[row][col] = "";
+                figPickedUp = 1;
+                emit square_changed(i, figPickedUp, new_state);
             }else{
-                board[row][col] = field;
-                figPickedUp = false;
-                emit square_changed(row, col, field, figPickedUp);
-            }*/
-            board_changed = true;           
+               // board[row][col] = field;
+                figPickedUp = 0;
+                emit square_changed(i, figPickedUp, new_state);
+            }
+           // board_changed = true;           
         }
         old_state[i] = new_state[i];
     }
-
+/*
     if(board_changed){
         emit boardChanged(new_state);
-    }
+    }*/
 /*
     for (int i = 0; i < 32; i++) {
         int row, col;

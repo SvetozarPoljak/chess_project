@@ -25,7 +25,7 @@ public:
 
 private slots:     
     void update_chess_clocks();
-    void moveMaker(const int *new_state);//(int row, int col, QString field, bool figPickedUp);
+    void moveMaker(int square, int figPickedUp, const int *new_state);//(int row, int col, QString field, bool figPickedUp);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -42,13 +42,15 @@ private:
     std::vector<std::vector<QString>> logicBoard; 
 
     chess::Board board;
+    chess::Move move;
     std::vector<chess::Move> legal_played_moves;
     std::vector<chess::Move> all_played_moves;
-    int fromSquare = -1;
+    int fromSquare[2] = {-1, -1};
     int toSquare = -1;
     bool illegal;
     int moveInProgress;
-    int fromLastLegalSquare;
+    int nextLegalFromSquare, nextLegalToSquare;
+    bool exists, castlingSequenceInProgress;
    // QString lastHighlightedFigure;
 
     QTimer *scanningTimer;
