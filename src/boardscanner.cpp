@@ -27,7 +27,7 @@ BoardScanner::BoardScanner(QObject *parent)
         bcm2835_gpio_fsel(mux_sel_4[i], BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(mux_out_4, BCM2835_GPIO_FSEL_INPT);
 
-    for (int i = 0; i < 32; i++) {
+/*    for (int i = 0; i < 32; i++) {
 
         int num;
         if(i < 16)
@@ -89,6 +89,12 @@ BoardScanner::BoardScanner(QObject *parent)
         
         new_state[i] = temp;
         old_state[i] = temp;
+    }*/
+    for(int i = 0; i < 64; i++){
+        if(i > 15 && i < 48)
+            old_state[i] = 1;
+        else
+            old_state[i] = 0;
     }
 
     board.resize(2*BOARD_SIZE);
@@ -172,7 +178,7 @@ void BoardScanner::dec2bin(int n)
 void BoardScanner::scanBoard()
 {
 
-    
+    /*
     for (int i = 0; i < 32; i++) {
 
         int num;
@@ -234,7 +240,72 @@ void BoardScanner::scanBoard()
         
         new_state[i] = temp;
     }
-	
+*/
+    for(int i = 0; i < 4; i++){
+        for(int j = 0; j < 16; j++){
+            int temp, idx;
+            dec2bin(j);
+
+            if(i == 0){
+                for (int k = 0; k < 4; k++) {
+                    bcm2835_gpio_write(mux_sel_1[k], nbin[k]);
+                }
+                bcm2835_delay(5);
+                temp = bcm2835_gpio_lev(mux_out_1);
+                idx = (j/4) + (j%4)*8;
+            }else if(i == 1){ 
+                for (int k = 0; k < 4; k++) {
+                    bcm2835_gpio_write(mux_sel_2[k], nbin[k]);
+                }
+                bcm2835_delay(5);
+                temp = bcm2835_gpio_lev(mux_out_2);
+                idx = ((j/4)+4) + (j%4)*8;
+            }else if(i == 2){
+                for (int k = 0; k < 4; k++) {
+                    bcm2835_gpio_write(mux_sel_3[k], nbin[k]);
+                }                
+                bcm2835_delay(5);
+                temp = bcm2835_gpio_lev(mux_out_3);
+                idx = ((15-j)/4) + (((15-j)%4)+4)*8;
+            }else{
+                for (int k = 0; k < 4; k++) {
+                    bcm2835_gpio_write(mux_sel_4[k], nbin[k]);
+                }                
+                bcm2835_delay(5);
+                temp = bcm2835_gpio_lev(mux_out_4);
+                idx = (((15-j)/4) + 4) + (((15-j)%4)+4)*8;
+            }
+            new_state[idx] = temp;
+        }
+    }
+
+    bool board_changed = false;
+    for (int i = 0; i < 64; i++) {
+      /*  int row, col;
+        bool figPickedUp;
+        row = i / 8;
+        col = i % 8;
+       */
+        if (old_state[i] != new_state[i]) {
+          /*  if(new_state[i]){
+                field = board[row][col];
+                board[row][col] = "";
+                figPickedUp = true;
+                emit square_changed(row, col, "", figPickedUp);
+            }else{
+                board[row][col] = field;
+                figPickedUp = false;
+                emit square_changed(row, col, field, figPickedUp);
+            }*/
+            board_changed = true;           
+        }
+        old_state[i] = new_state[i];
+    }
+
+    if(board_changed){
+        emit boardChanged(new_state);
+    }
+/*
     for (int i = 0; i < 32; i++) {
         int row, col;
         bool figPickedUp;
@@ -273,5 +344,5 @@ void BoardScanner::scanBoard()
             }           
         }
         old_state[32 + i] = new_state[32 + i];
-    }
+    }*/
 }

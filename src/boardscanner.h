@@ -5,7 +5,7 @@
 #include <vector>
 #include <atomic>
 #include <QVector>
-#include "chess.hpp"
+//#include "chess.hpp"
 
 // figures
 const QString wK = "wK"; // QString::fromUtf8("\u265A");
@@ -34,7 +34,8 @@ public:
     QVector<QVector<QString>> board;
 
 signals:
-    void square_changed(int row, int col, QString field, bool figPickedUp);
+   // void square_changed(int row, int col, QString field, bool figPickedUp);
+   void boardChanged(const int* new_state);
 
 public slots:
     void process();
@@ -52,11 +53,11 @@ private:
     int mux_sel_2[4] = {12, 16, 20, 21}; 
     int mux_out_2 = 25;
 
-    int mux_sel_3[4] = {2, 3, 4, 17};
-    int mux_out_3 = 27;
+    int mux_sel_4[4] = {2, 3, 4, 17};
+    int mux_out_4 = 27;
  
-    int mux_sel_4[4] = {14, 15, 18, 23};
-    int mux_out_4 = 24;
+    int mux_sel_3[4] = {14, 15, 18, 23};
+    int mux_out_3 = 24;
 
     QString field;
 	

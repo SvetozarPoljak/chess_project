@@ -14,6 +14,7 @@
 #include <QKeyEvent>
 #include <unistd.h>
 #include <signal.h>
+#include "chess.hpp"
 
 class Dialog : public QDialog {
     Q_OBJECT
@@ -24,8 +25,7 @@ public:
 
 private slots:     
     void update_chess_clocks();
-    void on_square_changed(int row, int col, QString field, bool figPickedUp); 
-    void moveMaker(int row, int col, QString field, bool figPickedUp);
+    void moveMaker(const int *new_state);//(int row, int col, QString field, bool figPickedUp);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -42,9 +42,14 @@ private:
     std::vector<std::vector<QString>> logicBoard; 
 
     chess::Board board;
-    std::vector<chess::Move> history;
+    std::vector<chess::Move> legal_played_moves;
+    std::vector<chess::Move> all_played_moves;
     int fromSquare = -1;
     int toSquare = -1;
+    bool illegal;
+    int moveInProgress;
+    int fromLastLegalSquare;
+   // QString lastHighlightedFigure;
 
     QTimer *scanningTimer;
     QTimer *chessClockTimer;
@@ -61,10 +66,12 @@ private:
     QLabel *whiteClock, *blackClock;
 
     int row;
-    int col;
+    int col; 
 
+    QString boardToQStringPiece(const chess::Board& board, int row, int col);
+    void on_square_changed(int row, int col, QString field, bool figPickedUp);
     void refreshField(int r, int c);
     void boardInit();
-   void updateClockStyles(); 
+    void updateClockStyles(); 
 };
 #endif
