@@ -46,10 +46,11 @@ private:
     chess::Move move;
     std::vector<chess::Move> legal_played_moves;
     std::vector<chess::Move> all_played_moves;
-    int fromSquare[2] = {-1, -1};
+   // int fromSquare[2] = {-1, -1};
+    int fromSquare = -1;
     int toSquare = -1;
     bool illegal;
-    int moveInProgress;
+   // int moveInProgress;
     int nextLegalFromSquare, nextLegalToSquare;
     bool exists, castlingSequenceInProgress;
    // QString lastHighlightedFigure;

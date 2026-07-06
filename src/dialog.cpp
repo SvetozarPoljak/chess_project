@@ -5,7 +5,7 @@
 Dialog::Dialog(QWidget *parent)
     : QDialog(parent),
       timeWhite(300), timeBlack(300), whiteToMove(true), 
-      row(0), col(0), illegal(false), moveInProgress(0),
+      row(0), col(0), illegal(false),// moveInProgress(0),
       castlingSequenceInProgress(false), exists(false)
 {
     const int BOARD_X = 600;
@@ -144,36 +144,43 @@ void Dialog::moveMaker(int square, int figPickedUp, std::array<int, 64> new_stat
     
     if(!illegal){
             if(figPickedUp){
-                if(!moveInProgress){
+               /* if(!moveInProgress){
 	            fromSquare[0] = square;
                     moveInProgress = 1;
                 }else{
                     fromSquare[1] = square;
-                }
+                }*/
                    // QString figure = boardToQStringPiece(board, fromSquare / 8, fromSquare % 8);
                    // on_square_changed(fromSquare / 8, fromSquare % 8, figure, true);
                    // break;
+                fromSquare = square;
             }else{
                 toSquare = square;
-                int moveFromSquare;
+              /*  int moveFromSquare;
                 if(fromSquare[1] != -1)
                     moveFromSquare = fromSquare[1];
                 else if(fromSquare[0] != -1)
                     moveFromSquare = fromSquare[0];
                 else
-                    return;
+                    return;*/
 
-                if(moveFromSquare != toSquare){
+               // if(moveFromSquare != toSquare){
+                if(fromSquare != toSquare){ 
                     illegal = true;
                     
                     exists = false;
                     if(castlingSequenceInProgress == false){
                         chess::Movelist legal;
                         chess::movegen::legalmoves(legal, board);
-                        chess::Square from(moveFromSquare);
+                        chess::Square from(fromSquare);
                         chess::Square to(toSquare);
+                        chess::Move candidate;
+                        if((fromSquare == 4 || fromSquare == 60) && (toSquare == 6 || toSquare == 62))
+                            candidate = chess::Move::make<chess::Move::CASTLING>(from, to);
+                        else
+                            candidate = chess::Move::make<chess::Move::NORMAL>(from, to);
                         for(const auto &m : legal){
-                            if(m.from() == from && m.to() == to){
+                            if(m == candidate){
                                 move = m;
                                 exists = true;
                                 std::cout<<"found!\n";
@@ -220,7 +227,7 @@ void Dialog::moveMaker(int square, int figPickedUp, std::array<int, 64> new_stat
                         }
 
                     }else{
-                        if(nextLegalFromSquare != moveFromSquare || nextLegalToSquare != toSquare){
+                        if(nextLegalFromSquare != fromSquare || nextLegalToSquare != toSquare){
                             exists = false;
                            // illegal = true;
                         }else{
@@ -276,10 +283,10 @@ void Dialog::moveMaker(int square, int figPickedUp, std::array<int, 64> new_stat
                         }
                         illegal = true;
                     }   
-                }
+                }/*
                 moveInProgress = 0;
                 fromSquare[0] = -1;
-                fromSquare[1] = -1;
+                fromSquare[1] = -1;*/
             }
         //} 
     }else{
