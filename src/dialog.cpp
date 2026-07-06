@@ -170,11 +170,13 @@ void Dialog::moveMaker(int square, int figPickedUp, std::array<int, 64> new_stat
                     if(castlingSequenceInProgress == false){
                         chess::Movelist legal;
                         chess::movegen::legalmoves(legal, board);
-                        
+                        chess::Square from(moveFromSquare);
+                        chess::Square to(toSquare);
                         for(const auto &m : legal){
-                            if(m.from() == moveFromSquare && m.to() == toSquare){
+                            if(m.from() == from && m.to() == to){
                                 move = m;
                                 exists = true;
+                                std::cout<<"found!\n";
                                 break;
                             }
                         }
@@ -182,12 +184,19 @@ void Dialog::moveMaker(int square, int figPickedUp, std::array<int, 64> new_stat
 
                         std::cout<<"legal moves:\n";
                         for(const auto &m : legal){
-                            std::cout << chess::uci::moveToUci(m) << " type=" << int(m.typeOf()) << "\n";
+                           // std::cout<<"---------------------------------\n";
+                            std::cout << chess::uci::moveToUci(m) << " type=" << m.typeOf() << "\n";
+                            std::cout<<" from = "<<m.from() <<"\n";
+                            std::cout<<" to = "<<m.to() <<"\n";
+                            std::cout<<"---------------------------------\n";
                         }
 
-                        std::cout<<"played move: * "<<moveFromSquare<<" "<<toSquare<<" *"<<std::endl;;
+                        std::cout<<"played move: * "<<from<<" "<<to<<" *"<<std::endl;;
                         
-
+                        std::cout<<"exists= "<<exists<<"\n";
+                        if(exists){
+                            std::cout<<"found move: "<<chess::uci::moveToUci(move) << std::endl;
+                            std::cout<<"type: "<<int(move.typeOf())<<std::endl;}
                         if(move.typeOf() == chess::Move::CASTLING && exists){
                       /*      if(castlingSequenceInProgress){
                                 castlingSequenceInProgress = false;
