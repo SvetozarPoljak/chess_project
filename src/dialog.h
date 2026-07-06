@@ -15,6 +15,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include "chess.hpp"
+//#include <array>
 
 class Dialog : public QDialog {
     Q_OBJECT
@@ -25,7 +26,7 @@ public:
 
 private slots:     
     void update_chess_clocks();
-    void moveMaker(int square, int figPickedUp, const int *new_state);//(int row, int col, QString field, bool figPickedUp);
+    void moveMaker(int square, int figPickedUp, std::array<int, 64> new_state);//(int row, int col, QString field, bool figPickedUp);
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -39,8 +40,8 @@ private:
     QTextEdit *moveText;
 
     std::vector<std::vector<QLabel*>> guiBoard;
-    std::vector<std::vector<QString>> logicBoard; 
-
+   // std::vector<std::vector<QString>> logicBoard; 
+    int boardState[64];
     chess::Board board;
     chess::Move move;
     std::vector<chess::Move> legal_played_moves;

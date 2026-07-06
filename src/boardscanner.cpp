@@ -27,127 +27,12 @@ BoardScanner::BoardScanner(QObject *parent)
         bcm2835_gpio_fsel(mux_sel_4[i], BCM2835_GPIO_FSEL_OUTP);
     bcm2835_gpio_fsel(mux_out_4, BCM2835_GPIO_FSEL_INPT);
 
-/*    for (int i = 0; i < 32; i++) {
-
-        int num;
-        if(i < 16)
-            num = i;
-        else
-            num = i - 16;
-
-        dec2bin(num);
-
-        if(i < 16){
-            for (int j = 0; j < 4; j++) {
-                bcm2835_gpio_write(mux_sel_1[j], nbin[j]);
-            }
-        }else{
-            for (int j = 0; j < 4; j++) {
-                bcm2835_gpio_write(mux_sel_2[j], nbin[j]);
-            }
-        }
-
-        bcm2835_delay(5);
-        
-        int temp; 
-        if(i < 16)
-            temp = bcm2835_gpio_lev(mux_out_1);
-        else
-            temp = bcm2835_gpio_lev(mux_out_2);
-        
-        new_state[i] = temp;
-        old_state[i] = temp;
-    }
-    
-    for (int i = 63; i > 31; i--) {
-
-        int num;
-        if(63 - i < 16)
-            num = 63 - i;
-        else
-            num = (63 - i) - 16;
-
-        dec2bin(num);
-
-        if(63 - i < 16){
-            for (int j = 0; j < 4; j++) {
-                bcm2835_gpio_write(mux_sel_3[j], nbin[j]);
-            }
-        }else{
-            for (int j = 0; j < 4; j++) {
-                bcm2835_gpio_write(mux_sel_4[j], nbin[j]);
-            }
-        }
-
-        bcm2835_delay(5);
-        
-        int temp; 
-        if(63 - i < 16)
-            temp = bcm2835_gpio_lev(mux_out_3);
-        else
-            temp = bcm2835_gpio_lev(mux_out_4);
-        
-        new_state[i] = temp;
-        old_state[i] = temp;
-    }*/
     for(int i = 0; i < 64; i++){
-        if(i > 15 && i < 48)
+        if(i > 15 && i < 47)
             old_state[i] = 1;
         else
             old_state[i] = 0;
     }
-
-    board.resize(2*BOARD_SIZE);
-
-    for (int i = 0; i < 2*BOARD_SIZE; i++) {
-        board[i].resize(2*BOARD_SIZE);
-    }
-  
-    for (int row = 0; row < 2*BOARD_SIZE; ++row) {
-        for (int col = 0; col < 2*BOARD_SIZE; ++col) {
-            board[row][col] = "";
-        }
-    }
-
-    board[1][0] = wP;
-    board[1][1] = wP;
-    board[1][2] = wP;
-    board[1][3] = wP;
-
-    board[0][0] = wR;
-    board[0][1] = wN;
-    board[0][2] = wB;
-    board[0][3] = wQ;
-
-    board[1][4] = wP;
-    board[1][5] = wP;
-    board[1][6] = wP;
-    board[1][7] = wP;
-
-    board[0][4] = wK;
-    board[0][5] = wB;
-    board[0][6] = wN;
-    board[0][7] = wR;
-
-    board[6][0] = bP;
-    board[6][1] = bP;
-    board[6][2] = bP;
-    board[6][3] = bP;
-
-    board[7][0] = bR;
-    board[7][1] = bN;
-    board[7][2] = bB;
-    board[7][3] = bQ;
-
-    board[6][4] = bP;
-    board[6][5] = bP;
-    board[6][6] = bP;
-    board[6][7] = bP;
-
-    board[7][4] = bK;
-    board[7][5] = bB;
-    board[7][6] = bN;
-    board[7][7] = bR;
 }
 
 void BoardScanner::stop()
@@ -177,70 +62,6 @@ void BoardScanner::dec2bin(int n)
 
 void BoardScanner::scanBoard()
 {
-
-    /*
-    for (int i = 0; i < 32; i++) {
-
-        int num;
-        if(i < 16)
-            num = i;
-        else
-            num = i - 16;
-
-        dec2bin(num);
-
-        if(i < 16){
-            for (int j = 0; j < 4; j++) {
-                bcm2835_gpio_write(mux_sel_1[j], nbin[j]);
-            }
-        }else{
-            for (int j = 0; j < 4; j++) {
-                bcm2835_gpio_write(mux_sel_2[j], nbin[j]);
-            }
-        }
-
-        bcm2835_delay(5);
-        
-        int temp; 
-        if(i < 16)
-            temp = bcm2835_gpio_lev(mux_out_1);
-        else
-            temp = bcm2835_gpio_lev(mux_out_2);
-        
-        new_state[i] = temp;
-    }
-    
-    for (int i = 63; i > 31; i--) {
-
-        int num;
-        if(63 - i < 16)
-            num = 63 - i;
-        else
-            num = (63 - i) - 16;
-
-        dec2bin(num);
-
-        if(63 - i < 16){
-            for (int j = 0; j < 4; j++) {
-                bcm2835_gpio_write(mux_sel_3[j], nbin[j]);
-            }
-        }else{
-            for (int j = 0; j < 4; j++) {
-                bcm2835_gpio_write(mux_sel_4[j], nbin[j]);
-            }
-        }
-
-        bcm2835_delay(5);
-        
-        int temp; 
-        if(63 - i < 16)
-            temp = bcm2835_gpio_lev(mux_out_3);
-        else
-            temp = bcm2835_gpio_lev(mux_out_4);
-        
-        new_state[i] = temp;
-    }
-*/
     for(int i = 0; i < 4; i++){
         for(int j = 0; j < 16; j++){
             int temp, idx;
@@ -278,71 +99,13 @@ void BoardScanner::scanBoard()
             new_state[idx] = temp;
         }
     }
-
-   // bool board_changed = false;
+    std::array<int, 64> snapshot;
     for (int i = 0; i < 64; i++) {
-       // int row, col;
-        bool figPickedUp;/*
-        row = i / 8;
-        col = i % 8;
-       */
         if (old_state[i] != new_state[i]) {
-            if(new_state[i]){
-               // field = board[row][col];
-               // board[row][col] = "";
-                figPickedUp = 1;
-                emit square_changed(i, figPickedUp, new_state);
-            }else{
-               // board[row][col] = field;
-                figPickedUp = 0;
-                emit square_changed(i, figPickedUp, new_state);
-            }
-           // board_changed = true;           
+            for(int i = 0; i<64;i++)
+                snapshot[i] = new_state[i];
+            emit square_changed(i, new_state[i], snapshot);           
         }
         old_state[i] = new_state[i];
     }
-/*
-    if(board_changed){
-        emit boardChanged(new_state);
-    }*/
-/*
-    for (int i = 0; i < 32; i++) {
-        int row, col;
-        bool figPickedUp;
-        row = i % 4;
-        col = i / 4;
-        if (old_state[i] != new_state[i]) {
-            if(new_state[i]){
-                field = board[row][col];
-                board[row][col] = "";
-                figPickedUp = true;
-                emit square_changed(row, col, "", figPickedUp);
-            }else{
-                board[row][col] = field;
-                figPickedUp = false;
-                emit square_changed(row, col, field, figPickedUp);
-            }           
-        }
-        old_state[i] = new_state[i];
-    }
-
-    for (int i = 0; i < 32; i++) {
-        int row, col;
-        bool figPickedUp;
-        row = 4 + (i % 4);
-        col = i / 4;
-        if (old_state[32 + i] != new_state[32 + i]) {
-            if(new_state[32 + i]){
-                field = board[row][col];
-                board[row][col] = "";
-                figPickedUp = true;
-                emit square_changed(row, col, "", figPickedUp);
-            }else{
-                board[row][col] = field;
-                figPickedUp = false;
-                emit square_changed(row, col, field, figPickedUp);
-            }           
-        }
-        old_state[32 + i] = new_state[32 + i];
-    }*/
 }
