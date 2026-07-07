@@ -4,7 +4,7 @@
 #include <iostream>
 
 BoardScanner::BoardScanner(QObject *parent)
-    : QObject(parent), running(true)
+    : QObject(parent), running(true), num(0)
 {
 
     if (!bcm2835_init()) {
@@ -45,7 +45,7 @@ void BoardScanner::process()
 {
     while (running) {
         scanBoard();
-        QThread::msleep(50);
+        QThread::msleep(100);
     }
 }
 
@@ -99,13 +99,5 @@ void BoardScanner::scanBoard()
             new_state[idx] = temp;
         }
     }
-    std::array<int, 64> snapshot;
-    for (int i = 0; i < 64; i++) {
-        if (old_state[i] != new_state[i]) {
-            for(int i = 0; i<64;i++)
-                snapshot[i] = new_state[i];
-            emit square_changed(i, new_state[i], snapshot);           
-        }
-        old_state[i] = new_state[i];
-    }
+    emit boardState(new_state);
 }

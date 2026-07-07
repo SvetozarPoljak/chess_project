@@ -34,7 +34,7 @@ public:
     QVector<QVector<QString>> board;
 
 signals:
-    void square_changed(int square, int figPickedUp, std::array<int, 64> new_state);
+    void boardState(const int *new_state);
 
 public slots:
     void process();
@@ -59,6 +59,7 @@ private:
     int mux_out_3 = 24;
 
     QString field;
+    int num; 
 	
     int old_state[64];
     int new_state[64];
