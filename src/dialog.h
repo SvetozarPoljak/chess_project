@@ -11,11 +11,14 @@
 #include "boardscanner.h"
 #include <QMenu>
 #include <QThread>
+#include <QProcess>
 #include <QPushButton>
 #include <QKeyEvent>
 #include <unistd.h>
 #include <signal.h>
 #include "chess.hpp"
+#include <QRegularExpression>
+#include <cmath>
 
 class Dialog : public QDialog {
     Q_OBJECT
@@ -38,6 +41,7 @@ private:
     QGridLayout *boardLayout;
    // QVBoxLayout *rightPanelLayout;
     QTextEdit *moveText;
+    QProcess *stockfish;
 
     std::vector<std::vector<QLabel*>> guiBoard;
     
@@ -66,6 +70,7 @@ private:
     QProgressBar *evalBar;
     QLabel *Clock;
     QLabel *whiteClock, *blackClock;
+    QLabel *evalLabel, *bestMoveLabel;
 
     int row;
     int col; 
@@ -74,6 +79,7 @@ private:
   
     void refreshField(int r, int c);
     void boardInit();
-    void updateClockStyles(); 
+    void updateClockStyles();
+    void parseStockfish(); 
 };
 #endif

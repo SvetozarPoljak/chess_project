@@ -87,10 +87,24 @@ Dialog::Dialog(QWidget *parent)
     statusLabel->setGeometry(BOARD_X, BOARD_Y + BOARD_LEN, BOARD_LEN, 50);
     statusLabel->setStyleSheet("color: black; font-weight: bold;");
 
+    // progress bar and stockfish
     evalBar = new QProgressBar(this);    
     evalBar->setValue(50);
     evalBar->setOrientation(Qt::Vertical);
     evalBar->setGeometry(BOARD_X-30, BOARD_Y, 30, BOARD_LEN);
+
+    evalLabel = new QLabel(this);
+    evalLabel->setGeometry(BOARD_X - 60, BOARD_Y + BOARD_LEN + 10, 60, 20);
+    evalLabel->setAlignment(Qt::AlignCenter);
+    evalLabel->setText("0.00");
+
+    bestMoveLabel = new QLabel(this);
+    bestMoveLabel->setGeometry(CLK_X, CLK_Y + 320, 200, 30);
+    bestMoveLabel->setText("Best move: -");
+
+    stockfish = new QProcess(this);
+
+    connect(stockfish, &QProcess::readyReadStandardOutput, this, &Dialog::parseStockfish); 
 
     // Scanner thread
     scanner = new BoardScanner(nullptr);
@@ -112,6 +126,11 @@ Dialog::Dialog(QWidget *parent)
         }
     }
 
+    // start stockfish
+    stockfish->start("../engine/stockfish");
+    stockfish->write("uci\n");
+    stockfish->write("isready\n");
+
     // start timer
     chessClockTimer->start(1000);
     scannerThread->start();
@@ -119,6 +138,7 @@ Dialog::Dialog(QWidget *parent)
 
 Dialog::~Dialog()
 { 
+    stockfish->kill();
     scanner->stop();
     scannerThread->quit();
     scannerThread->wait();
@@ -278,6 +298,12 @@ void Dialog::moveMaker(const int *new_state)
                     
                         board.makeMove(move);
                   
+                        //request evaluation
+                        QString fen = QString::fromStdString(board.getFen());
+                      
+                        stockfish->write(QString("position fen %1\n").arg(fen).toUtf8());
+                        stockfish->write("go movetime 150\n");
+
                         whiteToMove = !whiteToMove;
                         updateClockStyles();
                     }
@@ -361,6 +387,68 @@ void Dialog::moveMaker(const int *new_state)
     for(int i = 0; i < 64; i++)
         refreshField(i/8, i%8);
 } //moveMaker
+
+void Dialog::parseStockfish(){
+    while(stockfish->canReadLine())
+    {
+        QString line = stockfish->readLine().trimmed();
+        
+        if(line.startsWith("info")){
+
+            QRegularExpression cpRe("score cp (-?\\d+)");
+            auto cpMatch = cpRe.match(line);
+             
+            if(cpMatch.hasMatch())
+            {
+                int cp = cpMatch.captured(1).toInt(); 
+                
+                evalLabel->setText(QString::number(cp/100.0, 'f',2));
+
+                double x = cp / 400.0;
+                
+                double p = 1.0 / (1.0 + std::exp(-x));
+                
+                int value = int(p * 100.0);
+
+                evalBar->setValue(value);
+            }
+            
+            QRegularExpression mateRe("score mate (-?\\d+)");
+            auto mateMatch = mateRe.match(line);
+            
+            if(mateMatch.hasMatch())
+            {
+                int mate = mateMatch.captured(1).toInt();
+
+                if(mate > 0)
+                {
+                    evalLabel->setText("M" + QString::number(mate));
+                    evalBar->setValue(100);
+                }
+                else
+                {
+                    evalLabel->setText("M" + QString::number(mate));
+                    evalBar->setValue(0);                    
+                }
+            }
+
+            QRegularExpression pvRe(" pv ([a-h][1-8][a-h][1-8][qrbn]?)");
+            auto pvMatch = pvRe.match(line);
+            if(pvMatch.hasMatch()){
+                QString smove = pvMatch.captured(1);
+
+                bestMoveLabel->setText("Best move: " + smove);
+            }
+        }
+        if(line.startsWith("bestmove")){
+            QStringList parts = line.split(" ");
+
+            if(parts.size() >= 2){
+                bestMoveLabel->setText("Best move: " + parts[1]);
+            }
+        }
+    }
+}
 
 QString Dialog::boardToQStringPiece(const chess::Board& board, int row, int col)
 {
