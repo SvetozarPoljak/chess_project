@@ -71,10 +71,12 @@ private:
     QLabel *Clock;
     QLabel *whiteClock, *blackClock;
     QLabel *evalLabel, *bestMoveLabel;
+    QPushButton *stockfishSwitch;
 
-    int row;
-    int col; 
-
+/*    int row;
+    int col;*/ 
+    bool no_timer;   
+ 
     QString boardToQStringPiece(const chess::Board& board, int row, int col);
   
     void refreshField(int r, int c);

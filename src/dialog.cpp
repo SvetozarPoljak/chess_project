@@ -8,8 +8,10 @@ const int BOARD_LEN = 80*8;
 
 Dialog::Dialog(QWidget *parent)
     : QDialog(parent),
-      timeWhite(300), timeBlack(300), whiteToMove(true), 
-      row(0), col(0), illegal(false),
+      timeWhite(300), timeBlack(300),
+      whiteToMove(true), no_timer(true), 
+     // row(0), col(0), 
+      illegal(false),
       castlingSequenceInProgress(false), exists(false)
 {
 
@@ -33,7 +35,7 @@ Dialog::Dialog(QWidget *parent)
         "  background-color: #ff1a1a;"
         "}"
     );
-    closeButton->setGeometry(160+BOARD_X +BOARD_LEN, 10, 40, 30);
+    closeButton->setGeometry(300 + BOARD_X + BOARD_LEN, 10, 40, 30);
     connect(closeButton, &QPushButton::clicked, this, [](){
         ::kill(::getpid(), SIGKILL);
     });    
@@ -67,8 +69,9 @@ Dialog::Dialog(QWidget *parent)
 
     blackClock = new QLabel(Clock);
     blackClock->setGeometry(5, 45, 60, 35);
- 
-    updateClockStyles();
+    
+    if(!no_timer)
+        updateClockStyles();
 
     whiteClockLabel = new QLabel(whiteClock);
     whiteClockLabel->setGeometry(0, 0, 60, 35);
@@ -91,16 +94,60 @@ Dialog::Dialog(QWidget *parent)
     evalBar = new QProgressBar(this);    
     evalBar->setValue(50);
     evalBar->setOrientation(Qt::Vertical);
-    evalBar->setGeometry(BOARD_X-30, BOARD_Y, 30, BOARD_LEN);
+    evalBar->setGeometry(BOARD_X - 30, BOARD_Y, 30, BOARD_LEN);
+    evalBar->setStyleSheet(
+        "QProgressBar {"
+        "  background: black;"
+        "}"
+        "QProgressBar::chunk {"
+        "  background: white;"
+        "}"
+    );
 
     evalLabel = new QLabel(this);
-    evalLabel->setGeometry(BOARD_X - 60, BOARD_Y + BOARD_LEN + 10, 60, 20);
+    evalLabel->setGeometry(BOARD_X - 90, (BOARD_Y + BOARD_LEN / 2), 60, 30);
     evalLabel->setAlignment(Qt::AlignCenter);
     evalLabel->setText("0.00");
 
     bestMoveLabel = new QLabel(this);
-    bestMoveLabel->setGeometry(CLK_X, CLK_Y + 320, 200, 30);
+    bestMoveLabel->setGeometry(BOARD_X - 180, BOARD_Y + (3 * BOARD_LEN / 4), 150, 30);
     bestMoveLabel->setText("Best move: -");
+
+    evalBar->hide();
+    evalLabel->hide();
+    bestMoveLabel->hide();
+
+    //switch so user can show/hide best moves
+    stockfishSwitch = new QPushButton("Stockfish OFF", this);
+    stockfishSwitch->setCheckable(true);
+    stockfishSwitch->setGeometry(CLK_X, BOARD_LEN / 4, 150, 40);
+    stockfishSwitch->setStyleSheet(
+        "QPushButton {"
+        "background-color: #777;"
+        "color: white;"
+        "border-radius: 10px;"
+        "padding: 5px;"
+        "}"
+        "QPushButton:checked {"
+        "background-color: green;"
+        "}"
+    );
+
+    connect(stockfishSwitch, &QPushButton::toggled, this, [=](bool checked){
+        if(checked){
+            stockfishSwitch->setText("Stockfish ON");
+
+            evalBar->show();
+            evalLabel->show();
+            bestMoveLabel->show();
+        }else{
+            stockfishSwitch->setText("Stockfish OFF");
+
+            evalBar->hide();
+            evalLabel->hide();
+            bestMoveLabel->hide();  
+        }
+    });
 
     stockfish = new QProcess(this);
 
@@ -127,18 +174,18 @@ Dialog::Dialog(QWidget *parent)
     }
 
     // start stockfish
-    stockfish->start("../engine/stockfish");
+    stockfish->setProgram("../engine/stockfish");
+    stockfish->start();
     stockfish->write("uci\n");
     stockfish->write("isready\n");
 
     // start timer
-    chessClockTimer->start(1000);
+   // chessClockTimer->start(1000);
     scannerThread->start();
 }
 
 Dialog::~Dialog()
 { 
-    stockfish->kill();
     scanner->stop();
     scannerThread->quit();
     scannerThread->wait();
@@ -177,13 +224,14 @@ void Dialog::moveMaker(const int *new_state)
                     chess::Square from(fromSquare);
                     chess::Square to(toSquare);
                   
-                    std::cout<<"legal moves:\n";
+                  /*  std::cout<<"legal moves:\n";
                     for(const auto &m : legal){
                         std::cout << chess::uci::moveToUci(m) << " | type = " << m.typeOf() << " | ";
                         std::cout<<"from = "<<m.from() <<" | ";
                         std::cout<<"to = "<<m.to() <<"\n";
                         std::cout<<"---------------------------------\n";
                     }
+                    */
 
                     for(const auto &m : legal){   
                         if(m.typeOf() == chess::Move::CASTLING){
@@ -207,8 +255,8 @@ void Dialog::moveMaker(const int *new_state)
                                 QMenu promMenu(this);
                                 QPoint pos = QCursor::pos();
 
-                                pos.setX(pos.x() + 5);
-                                pos.setY(pos.y() + 5);
+                                pos.setX(pos.x() + 10);
+                                pos.setY(pos.y() + 10);
 
                                 if(fromSquare / 8 == 6)
                                 {
@@ -233,6 +281,7 @@ void Dialog::moveMaker(const int *new_state)
                                 QAction *bishopPromotion = promMenu.addAction(QString::fromUtf8("\u265D"));
                                 QAction *knightPromotion = promMenu.addAction(QString::fromUtf8("\u265E"));
                                 
+                                promMenu.setFocusPolicy(Qt::NoFocus);
                                 QAction *selected = promMenu.exec(pos);
                                 
                                 chess::PieceType wanted;
@@ -258,7 +307,7 @@ void Dialog::moveMaker(const int *new_state)
                     }
 
                     if(move.typeOf() == chess::Move::CASTLING && exists){
-                        std::cout<<"castling sequence is in progress\n";
+                       // std::cout<<"castling sequence is in progress\n";
                         castlingSequenceInProgress = true;
  
                         if(chess::uci::moveToUci(move) == "e1g1"){
@@ -298,14 +347,47 @@ void Dialog::moveMaker(const int *new_state)
                     
                         board.makeMove(move);
                   
+                        auto result = board.isGameOver();
+
+                        if(result.second != chess::GameResult::NONE){
+                            chessClockTimer->stop();
+                            switch(result.first)
+                            {
+                                case chess::GameResultReason::CHECKMATE:
+                                    statusLabel->setText("Checkmate!");
+                                    break;
+                                
+                                case chess::GameResultReason::STALEMATE:
+                                    statusLabel->setText("Draw by stalemate.");
+                                    break;
+                                
+                                case chess::GameResultReason::FIFTY_MOVE_RULE:
+                                    statusLabel->setText("Draw by 50 move rule.");
+                                    break;
+                                
+                                case chess::GameResultReason::INSUFFICIENT_MATERIAL:
+                                    statusLabel->setText("Draw by insufficient material.");
+                                    break;
+
+                                case chess::GameResultReason::THREEFOLD_REPETITION:
+                                    statusLabel->setText("Draw by repetition.");
+                                    break;
+                                default:
+                                    break;
+                            }
+                            return;
+                        }
+
                         //request evaluation
                         QString fen = QString::fromStdString(board.getFen());
-                      
+                       
+                        stockfish->write("stop\n");
                         stockfish->write(QString("position fen %1\n").arg(fen).toUtf8());
                         stockfish->write("go movetime 150\n");
 
                         whiteToMove = !whiteToMove;
-                        updateClockStyles();
+                        if(!no_timer)
+                            updateClockStyles();
                     }
                   
                 }else{
@@ -393,6 +475,63 @@ void Dialog::parseStockfish(){
     {
         QString line = stockfish->readLine().trimmed();
         
+        if(line == "readyok"){
+            /**********************************/
+            QMenu timeMenu(this);
+            QPoint pos = QCursor::pos();
+
+            pos.setX(pos.x() + 10);
+            pos.setY(pos.y() + 10);
+        
+            timeMenu.setTitle("Choose time control");
+            timeMenu.setStyleSheet(
+                "background-color: grey;"
+                "color: white;"
+                "font-weight: bold;"
+                "font-size: 45px;"
+                "padding: 0px; margin: 0px; border: 0px;"
+            );
+         
+            QAction *min5 = timeMenu.addAction("05:00");
+            QAction *min10 = timeMenu.addAction("10:00");
+            QAction *min30 = timeMenu.addAction("30:00");
+            QAction *notime = timeMenu.addAction("NONE");
+
+            timeMenu.setFocusPolicy(Qt::NoFocus);
+            QAction *selected = timeMenu.exec(pos);
+                                
+            no_timer = false;
+
+            if(selected == min5){
+                timeWhite = 300;
+                timeBlack = 300;
+            }
+            else if(selected == min10)
+            {
+                timeWhite = 600;
+                timeBlack = 600;
+            }
+            else if(selected == min30)
+            {
+                timeWhite = 1800;
+                timeBlack = 1800;
+            }else if(selected == notime){
+                no_timer = true;
+            }
+            else{
+                no_timer = true;
+            }
+            if(!no_timer){
+                updateClockStyles();
+                chessClockTimer->start(1000);
+            }                  
+            /**********************************/
+            QString fen = QString::fromStdString(board.getFen());
+            stockfish->write(QString("position fen %1\n").arg(fen).toUtf8());
+            stockfish->write("go movetime 150\n");
+            continue;
+        }
+ 
         if(line.startsWith("info")){
 
             QRegularExpression cpRe("score cp (-?\\d+)");
@@ -401,7 +540,10 @@ void Dialog::parseStockfish(){
             if(cpMatch.hasMatch())
             {
                 int cp = cpMatch.captured(1).toInt(); 
-                
+               
+                if(board.sideToMove() == chess::Color::BLACK)
+                    cp = -cp;
+ 
                 evalLabel->setText(QString::number(cp/100.0, 'f',2));
 
                 double x = cp / 400.0;
@@ -419,16 +561,32 @@ void Dialog::parseStockfish(){
             if(mateMatch.hasMatch())
             {
                 int mate = mateMatch.captured(1).toInt();
+                
+                if(mate == 0)
+                {
+                    if(board.sideToMove() == chess::Color::BLACK)
+                    {
+                        evalLabel->setText("White\n wins");
+                        evalBar->setValue(100);
+                    }else{
+                        evalLabel->setText("Black\n wins");
+                        evalBar->setValue(0);                        
+                    }
+                }else{ 
 
-                if(mate > 0)
-                {
-                    evalLabel->setText("M" + QString::number(mate));
-                    evalBar->setValue(100);
-                }
-                else
-                {
-                    evalLabel->setText("M" + QString::number(mate));
-                    evalBar->setValue(0);                    
+                    if(board.sideToMove() == chess::Color::BLACK)
+                        mate = -mate;
+
+                    if(mate > 0)
+                    {
+                        evalLabel->setText("M" + QString::number(mate));
+                        evalBar->setValue(100);
+                    }
+                    else
+                    {
+                        evalLabel->setText("M" + QString::number(-mate));
+                        evalBar->setValue(0);                    
+                    }
                 }
             }
 
