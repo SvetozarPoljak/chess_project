@@ -17,6 +17,7 @@ set(SOURCES
 set(HEADERS
     src/dialog.h
     src/boardscanner.h
+    src/chess.hpp
 )
 
 add_executable(chess ${SOURCES} ${HEADERS})
