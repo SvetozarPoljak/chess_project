@@ -22,22 +22,23 @@ set(HEADERS
 
 add_executable(chess ${SOURCES} ${HEADERS})
 
-# =========================
+# ========================================
 # LINUX / RASPBERRY PI CONFIGURATION (Qt5)
-# =========================
+# ========================================
 if(UNIX AND NOT APPLE)
     message(STATUS "Building for Linux/Raspberry Pi - using Qt5")
 
-    # Pronalaženje Qt5 umesto Qt6
-    find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui)
+    # Finding Qt5
+    find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui Connectivity)
     
     target_link_libraries(chess
         Qt5::Widgets
         Qt5::Core
         Qt5::Gui
+        Qt5::Connectivity
     )
 
-    # Linkovanje bcm2835 biblioteke
+    # Linking bcm2835 library
     find_library(BCM2835_LIB bcm2835 HINTS /usr/local/lib /usr/lib)
     if(BCM2835_LIB)
         target_link_libraries(chess ${BCM2835_LIB})
