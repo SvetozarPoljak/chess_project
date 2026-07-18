@@ -1,33 +1,48 @@
 #include "boardscanner.h"
-#include <bcm2835.h>
-#include <QThread>
-#include <iostream>
+
+// Standard UUIDs for AT-09 (CC2541) serial service and characteristic
+const QUuid SERIAL_SERVICE_UUID(QString("0000ffe0-0000-1000-8000-00805f9b34fb"));
+const QUuid TX_RX_CHARACTERISTIC_UUID(QString("0000ffe1-0000-1000-8000-00805f9b34fb"));
 
 BoardScanner::BoardScanner(QObject *parent)
-    : QObject(parent), running(true), num(0)
+    : QObject(parent), running(true), m_controller(nullptr), m_service(nullptr)
 {
+    m_moduleAddress = QBluetoothAddress("98:7B:F3:6B:BF:A9");
 
-    if (!bcm2835_init()) {
-        std::cerr << "bcm init fail\n";
-    }
+    m_controller = new QLowEnergyController(m_moduleAddress, this);
 
-    for (int i = 0; i < 4; i++)
-        bcm2835_gpio_fsel(mux_sel_1[i], BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(mux_out_1, BCM2835_GPIO_FSEL_INPT);
+    connect(m_controller, &QLowEnergyController::connected, this, [this]() {
+        m_controller->discoverServices();
+    });
 
-    for (int i = 0; i < 4; i++)
-        bcm2835_gpio_fsel(mux_sel_2[i], BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(mux_out_2, BCM2835_GPIO_FSEL_INPT);
-
-    for (int i = 0; i < 4; i++)
-        bcm2835_gpio_fsel(mux_sel_3[i], BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(mux_out_3, BCM2835_GPIO_FSEL_INPT);
-
-    for (int i = 0; i < 4; i++)
-        bcm2835_gpio_fsel(mux_sel_4[i], BCM2835_GPIO_FSEL_OUTP);
-    bcm2835_gpio_fsel(mux_out_4, BCM2835_GPIO_FSEL_INPT);
+    connect(m_controller, &QLowEnergyController::discoveryFinished, this, [this]() {
+        // Check whether module has wanted serial service (FFE0)
+        if (m_controller->services().contains(SERIAL_SERVICE_UUID)) {
+            m_service = m_controller->createServiceObject(SERIAL_SERVICE_UUID, this);
+            
+            if (m_service) {
+                connect(m_service, &QLowEnergyService::characteristicChanged, 
+                        this, &BoardScanner::onCharacteristicChange);
+                
+                connect(m_service, &QLowEnergyService::stateChanged, this, [this](QLowEnergyService::ServiceState state) {
+                    if (state == QLowEnergyService::ServiceDiscovered) {
+					// Finding TX/RX characteristic (FFE1) and subscribing on its notifications
+                        QLowEnergyCharacteristic characteristic = m_service->characteristic(TX_RX_CHARACTERISTIC_UUID);
+                        if (characteristic.isValid()) {
+                            QLowEnergyDescriptor descriptor = characteristic.descriptor(QBluetoothUuid::DescriptorType::ClientCharacteristicConfiguration);
+                            if (descriptor.isValid()) {
+                                m_service->writeDescriptor(descriptor, QByteArray::fromHex("0100")); // turn on notify listening mode
+                            }
+                        }
+                    }
+                });
+                m_service->discoverDetails();
+            }
+        }
+    });
 
     for(int i = 0; i < 64; i++){
+        new_state[i] = 0;
         if(i > 15 && i < 47)
             old_state[i] = 1;
         else
@@ -35,69 +50,41 @@ BoardScanner::BoardScanner(QObject *parent)
     }
 }
 
+BoardScanner::~BoardScanner()
+{
+    stop();
+}
+
 void BoardScanner::stop()
 {
     running = false;
-    bcm2835_close();
+    if (m_controller) {
+        m_controller->disconnectFromDevice();
+    }
 }
 
 void BoardScanner::process()
 {
-    while (running) {
-        scanBoard();
-        QThread::msleep(100);
+    if(m_controller){ 
+        m_controller->setRemoteAddressType(QLowEnergyController::PublicAddress);
+        m_controller->connectToDevice();
     }
 }
 
-void BoardScanner::dec2bin(int n)
+void BoardScanner::onCharacteristicChange(const QLowEnergyCharacteristic &c, const QByteArray &value)
 {
-    nbin.assign(4, 0);
-
-    int i = 0;
-    while (n && i < 4) {
-        nbin[i++] = n % 2;
-        n /= 2;
-    }
-}
-
-void BoardScanner::scanBoard()
-{
-    for(int i = 0; i < 4; i++){
-        for(int j = 0; j < 16; j++){
-            int temp, idx;
-            dec2bin(j);
-
-            if(i == 0){
-                for (int k = 0; k < 4; k++) {
-                    bcm2835_gpio_write(mux_sel_1[k], nbin[k]);
+    if (c.uuid() == TX_RX_CHARACTERISTIC_UUID) {
+        if (value.size() == 8) {
+            int idx = 0;
+            
+            for (int i = 0; i < 8; ++i) {
+                uint8_t byte = static_cast<uint8_t>(value[i]);
+                
+                for (int j = 0; j < 8; ++j) {
+                    new_state[idx++] = (byte >> j) & 0x01;
                 }
-                bcm2835_delay(5);
-                temp = bcm2835_gpio_lev(mux_out_1);
-                idx = (j/4) + (j%4)*8;
-            }else if(i == 1){ 
-                for (int k = 0; k < 4; k++) {
-                    bcm2835_gpio_write(mux_sel_2[k], nbin[k]);
-                }
-                bcm2835_delay(5);
-                temp = bcm2835_gpio_lev(mux_out_2);
-                idx = ((j/4)+4) + (j%4)*8;
-            }else if(i == 2){
-                for (int k = 0; k < 4; k++) {
-                    bcm2835_gpio_write(mux_sel_3[k], nbin[k]);
-                }                
-                bcm2835_delay(5);
-                temp = bcm2835_gpio_lev(mux_out_3);
-                idx = ((15-j)/4) + (((15-j)%4)+4)*8;
-            }else{
-                for (int k = 0; k < 4; k++) {
-                    bcm2835_gpio_write(mux_sel_4[k], nbin[k]);
-                }                
-                bcm2835_delay(5);
-                temp = bcm2835_gpio_lev(mux_out_4);
-                idx = (((15-j)/4) + 4) + (((15-j)%4)+4)*8;
             }
-            new_state[idx] = temp;
+            emit boardState(new_state);
         }
     }
-    emit boardState(new_state);
 }

@@ -29,13 +29,13 @@ if(UNIX AND NOT APPLE)
     message(STATUS "Building for Linux/Raspberry Pi - using Qt5")
 
     # Finding Qt5
-    find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui Connectivity)
+    find_package(Qt5 REQUIRED COMPONENTS Widgets Core Gui Bluetooth)
     
     target_link_libraries(chess
         Qt5::Widgets
         Qt5::Core
         Qt5::Gui
-        Qt5::Connectivity
+        Qt5::Bluetooth
     )
 
     # Linking bcm2835 library
