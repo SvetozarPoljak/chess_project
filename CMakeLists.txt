@@ -12,12 +12,14 @@ set(SOURCES
     src/main.cpp
     src/dialog.cpp
     src/boardscanner.cpp
+    src/deviceinfo.cpp
 )
 
 set(HEADERS
     src/dialog.h
     src/boardscanner.h
     src/chess.hpp
+    src/deviceinfo.h
 )
 
 add_executable(chess ${SOURCES} ${HEADERS})
