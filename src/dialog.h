@@ -36,7 +36,7 @@ protected:
 
 private:
     BoardScanner *scanner;
-    QThread *scannerThread;
+   // QThread *scannerThread;
    // QHBoxLayout *mainLayout;
     QGridLayout *boardLayout;
    // QVBoxLayout *rightPanelLayout;

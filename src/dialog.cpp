@@ -5,6 +5,7 @@
 const int BOARD_X = 600;
 const int BOARD_Y = 200;
 const int BOARD_LEN = 80*8;
+const int BOARD_SIZE = 4;
 
 Dialog::Dialog(QWidget *parent)
     : QDialog(parent),
@@ -154,16 +155,16 @@ Dialog::Dialog(QWidget *parent)
     connect(stockfish, &QProcess::readyReadStandardOutput, this, &Dialog::parseStockfish); 
 
     // Scanner thread
-    scanner = new BoardScanner(nullptr);
-    scannerThread = new QThread();
+    scanner = new BoardScanner();//(nullptr);
+   /* scannerThread = new QThread();
 
     scanner->moveToThread(scannerThread);
 
     connect(scannerThread, &QThread::started,
             scanner, &BoardScanner::process);
-  
+  */
     connect(scanner, &BoardScanner::boardState,
-            this, &Dialog::moveMaker, Qt::QueuedConnection);
+            this, &Dialog::moveMaker);//, Qt::QueuedConnection);
 
     for(int i = 0; i < 64; i++){
         if(i < 16 || i > 47){
@@ -181,17 +182,18 @@ Dialog::Dialog(QWidget *parent)
 
     // start timer
    // chessClockTimer->start(1000);
-    scannerThread->start();
+   // scannerThread->start();
+    scanner->deviceSearch();
 }
 
 Dialog::~Dialog()
 { 
-    scanner->stop();
-    scannerThread->quit();
-    scannerThread->wait();
+   // scanner->stop();
+   // scannerThread->quit();
+   // scannerThread->wait();
 
     delete scanner;
-    delete scannerThread;
+   // delete scannerThread;
 } 
 
 void Dialog::moveMaker(const int *new_state)

@@ -55,9 +55,6 @@
       connect(m_deviceDiscoveryAgent, SIGNAL(error(QBluetoothDeviceDiscoveryAgent::Error)),
               this, SLOT(deviceScanError(QBluetoothDeviceDiscoveryAgent::Error)));
       connect(m_deviceDiscoveryAgent, SIGNAL(finished()), this, SLOT(scanFinished()));
-
-      // initialize random seed for demo mode
-      //qsrand(QTime::currentTime().msec());
   }
 
   BoardScanner::~BoardScanner()
@@ -80,10 +77,12 @@
           qWarning() << "Discovered LE Device name: " << device.name() << " Address: "
                      << device.address().toString();
           DeviceInfo *dev = new DeviceInfo(device);
-          m_devices.append(dev);
-          setMessage("Low Energy device found. Scanning for more...");
+          if(device.name() == "BT05"){
+              m_devices.append(dev);
+              connectToService(device.address().toString());
+              setMessage("Low Energy device found.");
+          }
       }
-      //...
   }
 
   void BoardScanner::scanFinished()
@@ -166,7 +165,7 @@
 
   void BoardScanner::serviceDiscovered(const QBluetoothUuid &gatt)
   {
-      if (gatt == QBluetoothUuid(QBluetoothUuid::BoardScanner)) {
+      if (gatt == QBluetoothUuid(QStringLiteral("0000ffe0-0000-1000-8000-00805f9b34fb"))) {
           setMessage("BoardScanner service discovered. Waiting for service scan to be done...");
           foundBoardScannerService = true;
       }
@@ -180,7 +179,7 @@
       if (foundBoardScannerService) {
           setMessage("Connecting to service...");
           m_service = m_control->createServiceObject(
-                      QBluetoothUuid(QBluetoothUuid::BoardScanner), this);
+                      QBluetoothUuid(QStringLiteral("0000ffe0-0000-1000-8000-00805f9b34fb")), this);
       }
 
       if (!m_service) {
@@ -233,7 +232,7 @@
       case QLowEnergyService::ServiceDiscovered:
       {
           const QLowEnergyCharacteristic bsChar = m_service->characteristic(
-                      QBluetoothUuid(QBluetoothUuid::BoardScannerMeasurement));
+                      QBluetoothUuid(QStringLiteral("0000ffe1-0000-1000-8000-00805f9b34fb")));
           if (!bsChar.isValid()) {
               setMessage("BS Data not found.");
               break;
@@ -270,7 +269,7 @@
                                        const QByteArray &value)
   {
       // ignore any other characteristic change -> shouldn't really happen though
-      if (c.uuid() != QBluetoothUuid(QBluetoothUuid::BoardScannerMeasurement))
+      if (c.uuid() != QBluetoothUuid(QStringLiteral("0000ffe1-0000-1000-8000-00805f9b34fb")))
           return;
 
       if(value.size() == 8){
