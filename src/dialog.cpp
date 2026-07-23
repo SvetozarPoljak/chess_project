@@ -38,7 +38,6 @@ Dialog::Dialog(QWidget *parent)
     closeButton->setGeometry(300 + BOARD_X + BOARD_LEN, 10, 40, 30);
     connect(closeButton, &QPushButton::clicked, this, [this](){
         scanner->disconnectService();
-       // QTimer::singleShot(1000, qApp, &QApplication::quit);
     });    
    
     boardLayout = new QGridLayout(boardContainer);
@@ -182,7 +181,6 @@ Dialog::Dialog(QWidget *parent)
     stockfish->write("isready\n");
 
     scanner->deviceSearch();
-   // scanner->connectToService("98:7B:F3:6B:BF:A9");
 }
 
 void Dialog::onMessageChanged()
@@ -190,18 +188,11 @@ void Dialog::onMessageChanged()
    bluetoothText->append(scanner->message());
    QTextCursor c = bluetoothText->textCursor();
    c.movePosition(QTextCursor::End);
-   bluetoothText->setTextCursor(c);
-  // if(scanner->message() == "Cannot connect to remote device.")
-  // {
-      // scanner->disconnectService();
-      // QTimer::singleShot(1000, qApp, &QApplication::quit);
-     // QApplication::quit();
-  // }   
+   bluetoothText->setTextCursor(c);   
 }
 
 void Dialog::onExitReceived(){
     qWarning() << "Exiting application...";
-   // QApplication::quit();
     QTimer::singleShot(2000, qApp, &QApplication::quit);
 }
 
@@ -804,7 +795,6 @@ void Dialog::update_chess_clocks()
 void Dialog::keyPressEvent(QKeyEvent *event){
     if(event->key() == Qt::Key_Escape){  
         scanner->disconnectService();
-       // QTimer::singleShot(1000, qApp, &QApplication::quit);
     }else{
         QDialog::keyPressEvent(event);
     }

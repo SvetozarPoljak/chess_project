@@ -86,6 +86,7 @@
           for(QObject *obj : m_devices){
               DeviceInfo *dev = static_cast<DeviceInfo*>(obj);
               if(dev->getDevice().name() == "BT05"){
+                  setMessage("Bluetooth Board found.");
                   connectToService(dev->getAddress()); 
                   return;
               }
@@ -135,12 +136,8 @@
           return;
       }
       
-      setMessage("Connecting to device...");
       m_control = new QLowEnergyController(m_currentDevice.getDevice(), this);
-     /* QBluetoothDeviceInfo info(QBluetoothAddress(address), QString(), 0);
-      info.setCoreConfigurations(QBluetoothDeviceInfo::LowEnergyCoreConfiguration);
-      m_control = QLowEnergyController::createCentral(info, this);*/
-
+     
       connect(m_control, SIGNAL(serviceDiscovered(QBluetoothUuid)),
               this, SLOT(serviceDiscovered(QBluetoothUuid)));
       connect(m_control, SIGNAL(discoveryFinished()),
