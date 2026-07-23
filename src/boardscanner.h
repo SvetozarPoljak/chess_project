@@ -1,4 +1,4 @@
-/***************************************************************************
+  /***************************************************************************
   **
   ** Copyright (C) 2014 BlackBerry Limited. All rights reserved.
   ** Copyright (C) 2015 The Qt Company Ltd.
@@ -59,7 +59,7 @@ class BoardScanner : public QObject
     Q_OBJECT
 
 public:
-    explicit BoardScanner();
+    BoardScanner(QWidget *parent = nullptr);
     ~BoardScanner();
 
     void setMessage(QString message);
@@ -95,6 +95,7 @@ signals:
     void messageChanged();
     void nameChanged();
     void boardState(const int *new_state);
+    void exit();
 
 private:
     DeviceInfo m_currentDevice;

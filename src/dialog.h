@@ -19,6 +19,7 @@
 #include "chess.hpp"
 #include <QRegularExpression>
 #include <cmath>
+#include <QApplication>
 
 class Dialog : public QDialog {
     Q_OBJECT
@@ -30,17 +31,17 @@ public:
 private slots:     
     void update_chess_clocks();
     void moveMaker(const int *new_state);
+    void onMessageChanged();
+    void onExitReceived();
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
 
 private:
     BoardScanner *scanner;
-   // QThread *scannerThread;
-   // QHBoxLayout *mainLayout;
     QGridLayout *boardLayout;
-   // QVBoxLayout *rightPanelLayout;
     QTextEdit *moveText;
+    QTextEdit *bluetoothText;
     QProcess *stockfish;
 
     std::vector<std::vector<QLabel*>> guiBoard;
@@ -73,8 +74,6 @@ private:
     QLabel *evalLabel, *bestMoveLabel;
     QPushButton *stockfishSwitch;
 
-/*    int row;
-    int col;*/ 
     bool no_timer;   
  
     QString boardToQStringPiece(const chess::Board& board, int row, int col);

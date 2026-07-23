@@ -42,9 +42,7 @@
 
   #include "boardscanner.h"
 
-  #include <QtEndian>
-
-  BoardScanner::BoardScanner():
+  BoardScanner::BoardScanner(QWidget *parent):
       m_currentDevice(QBluetoothDeviceInfo()), foundBoardScannerService(false),
       m_control(0), m_service(0)
   {
@@ -57,11 +55,7 @@
       connect(m_deviceDiscoveryAgent, SIGNAL(finished()), this, SLOT(scanFinished()));
   }
 
-  BoardScanner::~BoardScanner()
-  {
-      qDeleteAll(m_devices);
-      m_devices.clear();
-  }
+  BoardScanner::~BoardScanner(){}
 
   void BoardScanner::deviceSearch()
   {
@@ -77,18 +71,28 @@
           qWarning() << "Discovered LE Device name: " << device.name() << " Address: "
                      << device.address().toString();
           DeviceInfo *dev = new DeviceInfo(device);
-          if(device.name() == "BT05"){
-              m_devices.append(dev);
-              connectToService(device.address().toString());
-              setMessage("Low Energy device found.");
-          }
+          m_devices.append(dev);
       }
   }
 
   void BoardScanner::scanFinished()
   {
-      if (m_devices.isEmpty())
+      if (m_devices.isEmpty()){
           setMessage("No Low Energy devices found");
+          emit exit();
+      }
+      else
+      {
+          for(QObject *obj : m_devices){
+              DeviceInfo *dev = static_cast<DeviceInfo*>(obj);
+              if(dev->getDevice().name() == "BT05"){
+                  connectToService(dev->getAddress()); 
+                  return;
+              }
+          }
+          setMessage("Board not found");
+          emit exit();
+      }
   }
 
   void BoardScanner::deviceScanError(QBluetoothDeviceDiscoveryAgent::Error error)
@@ -99,6 +103,7 @@
           setMessage("Writing or reading from the device resulted in an error.");
       else
           setMessage("An unknown error has occurred.");
+      emit exit();
   }
 
   void BoardScanner::setMessage(QString message)
@@ -126,16 +131,16 @@
       }
       if (!deviceFound) {
           setMessage("Device not found.");
+          emit exit();
           return;
       }
-
-      if (m_control) {
-          m_control->disconnectFromDevice();
-          delete m_control;
-          m_control = 0;
-
-      }
+      
+      setMessage("Connecting to device...");
       m_control = new QLowEnergyController(m_currentDevice.getDevice(), this);
+     /* QBluetoothDeviceInfo info(QBluetoothAddress(address), QString(), 0);
+      info.setCoreConfigurations(QBluetoothDeviceInfo::LowEnergyCoreConfiguration);
+      m_control = QLowEnergyController::createCentral(info, this);*/
+
       connect(m_control, SIGNAL(serviceDiscovered(QBluetoothUuid)),
               this, SLOT(serviceDiscovered(QBluetoothUuid)));
       connect(m_control, SIGNAL(discoveryFinished()),
@@ -160,6 +165,18 @@
   {
       setMessage("BoardScanner service disconnected");
       qWarning() << "Remote device disconnected";
+
+      if(m_service)
+      {
+          m_service->deleteLater();
+          m_service = nullptr;
+      }
+      if(m_control)
+      {
+          m_control->deleteLater();
+          m_control = nullptr;
+      }
+      emit exit();
   }
 
 
@@ -173,9 +190,7 @@
 
   void BoardScanner::serviceScanDone()
   {
-      delete m_service;
-      m_service = 0;
-
+     
       if (foundBoardScannerService) {
           setMessage("Connecting to service...");
           m_service = m_control->createServiceObject(
@@ -184,6 +199,7 @@
 
       if (!m_service) {
           setMessage("BoardScanner Service not found.");
+          emit exit();
           return;
       }
 
@@ -200,23 +216,13 @@
   void BoardScanner::disconnectService()
   {
       foundBoardScannerService = false;
-      //m_stop = QDateTime::currentDateTime();
 
-      /*if (m_devices.isEmpty()) {
-          if (timer)
-              timer->stop();
-          return;
-      }*/
-
-      //disable notifications before disconnecting
       if (m_notificationDesc.isValid() && m_service
-              && m_notificationDesc.value() == QByteArray::fromHex("0100"))
+          && m_notificationDesc.value() == QByteArray::fromHex("0100"))
       {
           m_service->writeDescriptor(m_notificationDesc, QByteArray::fromHex("0000"));
-      } else {
+      } else{
           m_control->disconnectFromDevice();
-          delete m_service;
-          m_service = 0;
       }
   }
 
@@ -224,6 +230,7 @@
   {
       setMessage("Cannot connect to remote device.");
       qWarning() << "Controller Error:" << error;
+      emit exit();
   }
 
   void BoardScanner::serviceStateChanged(QLowEnergyService::ServiceState s)
@@ -235,6 +242,7 @@
                       QBluetoothUuid(QStringLiteral("0000ffe1-0000-1000-8000-00805f9b34fb")));
           if (!bsChar.isValid()) {
               setMessage("BS Data not found.");
+              emit exit();
               break;
           }
 
@@ -242,8 +250,6 @@
                       QBluetoothUuid::ClientCharacteristicConfiguration);
           if (m_notificationDesc.isValid()) {
               m_service->writeDescriptor(m_notificationDesc, QByteArray::fromHex("0100"));
-              //setMessage("Measuring");
-              //m_start = QDateTime::currentDateTime();
           }
 
           break;
@@ -263,6 +269,7 @@
       default:
           qWarning() << "BS service error:" << e;
       }
+      emit exit();
   }
 
   void BoardScanner::updateBoardState(const QLowEnergyCharacteristic &c,
@@ -273,40 +280,17 @@
           return;
 
       if(value.size() == 8){
-		  int idx = 0;
+          int idx = 0;
 			
-	      for(int i = 0; i < 8;  ++i){
-	          uint8_t byte = static_cast<uint8_t>(value[i]);
+          for(int i = 0; i < 8;  ++i){
+              uint8_t byte = static_cast<uint8_t>(value[i]);
               for(int j = 0; j < 8; ++j){
-			      new_state[idx++] = (byte >> j) & 0x01;
-		      }				
-		  }
-		  emit boardState(new_state);
-	  }
+                  new_state[idx++] = (byte >> j) & 0x01;
+              }				
+          }
+          emit boardState(new_state);
+      }
   }
-/*	  
-      quint8 flags = data[0];
-
-      //BoardScanner
-      if (flags & 0x1) { // HR 16 bit? otherwise 8 bit
-          const quint16 heartRate = qFromLittleEndian<quint16>(data[1]);
-          //qDebug() << "16 bit HR value:" << heartRate;
-          m_measurements.append(heartRate);
-      } else {
-          const quint8 *heartRate = &data[1];
-          m_measurements.append(*heartRate);
-          //qDebug() << "8 bit HR value:" << *heartRate;
-      }
-
-      //Energy Expended
-      if (flags & 0x8) {
-          int index = (flags & 0x1) ? 5 : 3;
-          const quint16 energy = qFromLittleEndian<quint16>(data[index]);
-          qDebug() << "Used Energy:" << energy;
-      }
-
-      Q_EMIT hrChanged();
-  }*/
 
   void BoardScanner::confirmedDescriptorWrite(const QLowEnergyDescriptor &d,
                                            const QByteArray &value)
@@ -314,108 +298,17 @@
       if (d.isValid() && d == m_notificationDesc && value == QByteArray::fromHex("0000")) {
           //disabled notifications -> assume disconnect intent
           m_control->disconnectFromDevice();
-          delete m_service;
-          m_service = 0;
-      }
-  }
-/*
-  int BoardScanner::hR() const
-  {
-      if (m_measurements.isEmpty())
-          return 0;
-      return m_measurements.last();
-  }
-
-  void BoardScanner::obtainResults()
-  {
-      Q_EMIT timeChanged();
-      Q_EMIT averageChanged();
-      Q_EMIT caloriesChanged();
-  }
-
-  int BoardScanner::time()
-  {
-      return m_start.secsTo(m_stop);
-  }
-
-  int BoardScanner::maxHR() const
-  {
-      return m_max;
-  }
-
-  int BoardScanner::minHR() const
-  {
-      return m_min;
-  }
-
-  float BoardScanner::average()
-  {
-      if (m_measurements.size() == 0) {
-          return 0;
-      } else {
-          m_max = 0;
-          m_min = 1000;
-          int sum = 0;
-          for (int i = 0; i < m_measurements.size(); i++) {
-              sum += (int) m_measurements.value(i);
-              if (((int)m_measurements.value(i)) > m_max)
-                  m_max = (int)m_measurements.value(i);
-              if (((int)m_measurements.value(i)) < m_min)
-                  m_min = (int)m_measurements.value(i);
-          }
-          return sum/m_measurements.size();
       }
   }
 
-  int BoardScanner::measurements(int index) const
-  {
-      if (index > m_measurements.size())
-          return 0;
-      else
-          return (int)m_measurements.value(index);
-  }
 
-  int BoardScanner::measurementsSize() const
-  {
-      return m_measurements.size();
-  }
 
-  QString BoardScanner::deviceAddress() const
-  {
-      return m_currentDevice.getAddress();
-  }
 
-  float BoardScanner::caloriesCalculation()
-  {
-      calories = ((-55.0969 + (0.6309 * average()) + (0.1988 * 94) + (0.2017 * 24)) / 4.184) * 60 * time()/3600 ;
-      return calories;
-  }
 
-  int BoardScanner::numDevices() const
-  {
-      return m_devices.size();
-  }
 
-  void BoardScanner::startDemo()
-  {
-      m_start = QDateTime::currentDateTime();
-      if (!timer) {
-          timer = new QTimer(this);
-          connect(timer, SIGNAL(timeout()), this, SLOT(receiveDemo()));
-      }
-      timer->start(1000);
-      setMessage("This is Demo mode");
-  }
 
-  void BoardScanner::receiveDemo()
-  {
-      m_measurements.append(randomPulse());
-      Q_EMIT hrChanged();
-  }
 
-  int BoardScanner::randomPulse() const
-  {
-      // random number between 50 and 70
-      return qrand() % (70 - 50) + 50;
-  }
-*/
+
+
+
+

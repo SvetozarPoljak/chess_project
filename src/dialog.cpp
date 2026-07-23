@@ -9,9 +9,8 @@ const int BOARD_SIZE = 4;
 
 Dialog::Dialog(QWidget *parent)
     : QDialog(parent),
-      timeWhite(300), timeBlack(300),
+      timeWhite(300), timeBlack(300), 
       whiteToMove(true), no_timer(true), 
-     // row(0), col(0), 
       illegal(false),
       castlingSequenceInProgress(false), exists(false)
 {
@@ -37,10 +36,11 @@ Dialog::Dialog(QWidget *parent)
         "}"
     );
     closeButton->setGeometry(300 + BOARD_X + BOARD_LEN, 10, 40, 30);
-    connect(closeButton, &QPushButton::clicked, this, [](){
-        ::kill(::getpid(), SIGKILL);
+    connect(closeButton, &QPushButton::clicked, this, [this](){
+        scanner->disconnectService();
+       // QTimer::singleShot(1000, qApp, &QApplication::quit);
     });    
-
+   
     boardLayout = new QGridLayout(boardContainer);
     boardLayout->setAlignment(Qt::AlignCenter);
     boardLayout->setSpacing(0);
@@ -57,6 +57,11 @@ Dialog::Dialog(QWidget *parent)
     moveText->setGeometry(CLK_X + 100, CLK_Y, 200, 300);
     moveText->setReadOnly(true);
     moveText->setLineWrapMode(QTextEdit::NoWrap);
+
+    bluetoothText = new QTextEdit(this);
+    bluetoothText->setGeometry(BOARD_X + BOARD_LEN/2 - 200, BOARD_Y - 120, 400, 100);
+    bluetoothText->setReadOnly(true);
+    bluetoothText->setLineWrapMode(QTextEdit::NoWrap);
 
     Clock = new QLabel(this);
     Clock->setGeometry(CLK_X, CLK_Y, 70, 85);
@@ -155,16 +160,12 @@ Dialog::Dialog(QWidget *parent)
     connect(stockfish, &QProcess::readyReadStandardOutput, this, &Dialog::parseStockfish); 
 
     // Scanner thread
-    scanner = new BoardScanner();//(nullptr);
-   /* scannerThread = new QThread();
-
-    scanner->moveToThread(scannerThread);
-
-    connect(scannerThread, &QThread::started,
-            scanner, &BoardScanner::process);
-  */
+    scanner = new BoardScanner(this);
+   
     connect(scanner, &BoardScanner::boardState,
-            this, &Dialog::moveMaker);//, Qt::QueuedConnection);
+            this, &Dialog::moveMaker);
+    connect(scanner, &BoardScanner::messageChanged, this, &Dialog::onMessageChanged);     
+    connect(scanner, &BoardScanner::exit, this, &Dialog::onExitReceived);
 
     for(int i = 0; i < 64; i++){
         if(i < 16 || i > 47){
@@ -180,20 +181,38 @@ Dialog::Dialog(QWidget *parent)
     stockfish->write("uci\n");
     stockfish->write("isready\n");
 
-    // start timer
-   // chessClockTimer->start(1000);
-   // scannerThread->start();
     scanner->deviceSearch();
+   // scanner->connectToService("98:7B:F3:6B:BF:A9");
+}
+
+void Dialog::onMessageChanged()
+{
+   bluetoothText->append(scanner->message());
+   QTextCursor c = bluetoothText->textCursor();
+   c.movePosition(QTextCursor::End);
+   bluetoothText->setTextCursor(c);
+  // if(scanner->message() == "Cannot connect to remote device.")
+  // {
+      // scanner->disconnectService();
+      // QTimer::singleShot(1000, qApp, &QApplication::quit);
+     // QApplication::quit();
+  // }   
+}
+
+void Dialog::onExitReceived(){
+    qWarning() << "Exiting application...";
+   // QApplication::quit();
+    QTimer::singleShot(2000, qApp, &QApplication::quit);
 }
 
 Dialog::~Dialog()
 { 
-   // scanner->stop();
-   // scannerThread->quit();
-   // scannerThread->wait();
-
-    delete scanner;
-   // delete scannerThread;
+    if(stockfish->state() != QProcess::NotRunning)
+    {
+        stockfish->terminate();
+        if(!stockfish->waitForFinished(1000))
+            stockfish->kill();
+    }
 } 
 
 void Dialog::moveMaker(const int *new_state)
@@ -226,15 +245,6 @@ void Dialog::moveMaker(const int *new_state)
                     chess::Square from(fromSquare);
                     chess::Square to(toSquare);
                   
-                  /*  std::cout<<"legal moves:\n";
-                    for(const auto &m : legal){
-                        std::cout << chess::uci::moveToUci(m) << " | type = " << m.typeOf() << " | ";
-                        std::cout<<"from = "<<m.from() <<" | ";
-                        std::cout<<"to = "<<m.to() <<"\n";
-                        std::cout<<"---------------------------------\n";
-                    }
-                    */
-
                     for(const auto &m : legal){   
                         if(m.typeOf() == chess::Move::CASTLING){
                             if(m.from() == chess::Square::SQ_E1){
@@ -309,7 +319,7 @@ void Dialog::moveMaker(const int *new_state)
                     }
 
                     if(move.typeOf() == chess::Move::CASTLING && exists){
-                       // std::cout<<"castling sequence is in progress\n";
+              
                         castlingSequenceInProgress = true;
  
                         if(chess::uci::moveToUci(move) == "e1g1"){
@@ -792,8 +802,9 @@ void Dialog::update_chess_clocks()
 }
 
 void Dialog::keyPressEvent(QKeyEvent *event){
-    if(event->key() == Qt::Key_Escape){
-        ::kill(::getpid(), SIGKILL);
+    if(event->key() == Qt::Key_Escape){  
+        scanner->disconnectService();
+       // QTimer::singleShot(1000, qApp, &QApplication::quit);
     }else{
         QDialog::keyPressEvent(event);
     }
