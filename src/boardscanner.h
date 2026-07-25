@@ -96,6 +96,7 @@ signals:
     void nameChanged();
     void boardState(const int *new_state);
     void exit();
+    void connected();
 
 private:
     DeviceInfo m_currentDevice;

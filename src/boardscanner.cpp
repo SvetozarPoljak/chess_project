@@ -292,6 +292,10 @@
   void BoardScanner::confirmedDescriptorWrite(const QLowEnergyDescriptor &d,
                                            const QByteArray &value)
   {
+      if (d.isValid() && d == m_notificationDesc && value == QByteArray::fromHex("0100")) {
+          setMessage("Bluetooth Chess Board connected!");
+          emit connected();
+      }
       if (d.isValid() && d == m_notificationDesc && value == QByteArray::fromHex("0000")) {
           //disabled notifications -> assume disconnect intent
           m_control->disconnectFromDevice();

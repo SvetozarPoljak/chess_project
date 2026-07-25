@@ -12,12 +12,9 @@ Dialog::Dialog(QWidget *parent)
       timeWhite(300), timeBlack(300), 
       whiteToMove(true), no_timer(true), 
       illegal(false),
-      castlingSequenceInProgress(false), exists(false)
+      castlingSequenceInProgress(false), exists(false), boardFound(false),
+      promotionSequenceInProgress(false)
 {
-
-    this->setFixedSize(200+BOARD_LEN, 100+BOARD_LEN);
-    this->setWindowTitle("Chess Board");
-
     // GUI
     QWidget *boardContainer = new QWidget(this);
     boardContainer->setGeometry(BOARD_X, BOARD_Y, BOARD_LEN, BOARD_LEN);
@@ -32,12 +29,17 @@ Dialog::Dialog(QWidget *parent)
         "  border-radius: 5px;"
         "}"
         "QPushButton:hover {"
-        "  background-color: #ff1a1a;"
+        "  background-color: #ff3333;"
         "}"
     );
     closeButton->setGeometry(300 + BOARD_X + BOARD_LEN, 10, 40, 30);
     connect(closeButton, &QPushButton::clicked, this, [this](){
-        scanner->disconnectService();
+        if(boardFound)
+            scanner->disconnectService();
+        else{
+            qWarning() << "Exiting application...";
+            QTimer::singleShot(2000, qApp, &QApplication::quit);
+        }
     });    
    
     boardLayout = new QGridLayout(boardContainer);
@@ -57,8 +59,20 @@ Dialog::Dialog(QWidget *parent)
     moveText->setReadOnly(true);
     moveText->setLineWrapMode(QTextEdit::NoWrap);
 
+    QLabel *btLogo = new QLabel(this);
+    btLogo ->setGeometry(BOARD_X + BOARD_LEN/2 - 200, BOARD_Y - 120, 50, 50);
+    btLogo->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    btLogo->setMargin(0);
+    btLogo->setIndent(0);
+    btLogo->setAlignment(Qt::AlignCenter);
+    btLogo->setStyleSheet("background-color: blue; color: white");
+    QFont f;
+    f.setPixelSize(25);
+    btLogo->setFont(f);
+    btLogo->setText(QString::fromUtf8("\u16BC\u16D2"));
+
     bluetoothText = new QTextEdit(this);
-    bluetoothText->setGeometry(BOARD_X + BOARD_LEN/2 - 200, BOARD_Y - 120, 400, 100);
+    bluetoothText->setGeometry(BOARD_X + BOARD_LEN/2 - 150, BOARD_Y - 120, 350, 50);
     bluetoothText->setReadOnly(true);
     bluetoothText->setLineWrapMode(QTextEdit::NoWrap);
 
@@ -158,13 +172,12 @@ Dialog::Dialog(QWidget *parent)
 
     connect(stockfish, &QProcess::readyReadStandardOutput, this, &Dialog::parseStockfish); 
 
-    // Scanner thread
+    // Scanner 
     scanner = new BoardScanner(this);
    
-    connect(scanner, &BoardScanner::boardState,
-            this, &Dialog::moveMaker);
     connect(scanner, &BoardScanner::messageChanged, this, &Dialog::onMessageChanged);     
     connect(scanner, &BoardScanner::exit, this, &Dialog::onExitReceived);
+    connect(scanner, &BoardScanner::connected, this, &Dialog::onConnected);
 
     for(int i = 0; i < 64; i++){
         if(i < 16 || i > 47){
@@ -174,21 +187,26 @@ Dialog::Dialog(QWidget *parent)
         }
     }
 
+    scanner->deviceSearch();
+}
+
+void Dialog::onConnected(){
+    boardFound = true;
+    statusLabel->setText("Starting Stockfish...");
     // start stockfish
     stockfish->setProgram("../engine/stockfish");
     stockfish->start();
     stockfish->write("uci\n");
     stockfish->write("isready\n");
-
-    scanner->deviceSearch();
 }
 
 void Dialog::onMessageChanged()
 {
-   bluetoothText->append(scanner->message());
-   QTextCursor c = bluetoothText->textCursor();
-   c.movePosition(QTextCursor::End);
-   bluetoothText->setTextCursor(c);   
+    bluetoothText->append(scanner->message());
+    QTextCursor c = bluetoothText->textCursor();
+    c.movePosition(QTextCursor::End);
+    bluetoothText->setTextCursor(c);   
+    bluetoothText->horizontalScrollBar()->setValue(0);
 }
 
 void Dialog::onExitReceived(){
@@ -236,6 +254,7 @@ void Dialog::moveMaker(const int *new_state)
                     chess::Square from(fromSquare);
                     chess::Square to(toSquare);
                   
+                    bool isPromotion = false;
                     for(const auto &m : legal){   
                         if(m.typeOf() == chess::Move::CASTLING){
                             if(m.from() == chess::Square::SQ_E1){
@@ -255,57 +274,112 @@ void Dialog::moveMaker(const int *new_state)
                          
                         if(m.from() == from && m.to() == to){
                             if(m.typeOf() == chess::Move::PROMOTION){
-                                QMenu promMenu(this);
-                                QPoint pos = QCursor::pos();
-
-                                pos.setX(pos.x() + 10);
-                                pos.setY(pos.y() + 10);
-
-                                if(fromSquare / 8 == 6)
-                                {
-                                    promMenu.setStyleSheet(
-                                        "background-color: grey;"
-                                        "color: white;"
-                                        "font-weight: bold;"
-                                        "font-size: 45px;"
-                                        "padding: 0px; margin: 0px; border: 0px;"
-                                    );
-                                }else if(fromSquare / 8 == 1){
-                                    promMenu.setStyleSheet(
-                                        "background-color: grey;"
-                                        "color: black;"
-                                        "font-weight: bold;"
-                                        "font-size: 45px;"
-                                        "padding: 0px; margin: 0px; border: 0px;"
-                                    );
-                                }
-                                QAction *queenPromotion = promMenu.addAction(QString::fromUtf8("\u265B"));
-                                QAction *rookPromotion = promMenu.addAction(QString::fromUtf8("\u265C"));
-                                QAction *bishopPromotion = promMenu.addAction(QString::fromUtf8("\u265D"));
-                                QAction *knightPromotion = promMenu.addAction(QString::fromUtf8("\u265E"));
-                                
-                                promMenu.setFocusPolicy(Qt::NoFocus);
-                                QAction *selected = promMenu.exec(pos);
-                                
-                                chess::PieceType wanted;
-                                if(selected == queenPromotion)
-                                    wanted = chess::PieceType::QUEEN;
-                                else if(selected == rookPromotion)
-                                    wanted = chess::PieceType::ROOK;
-                                else if(selected == bishopPromotion)
-                                    wanted = chess::PieceType::BISHOP;
-                                else if(selected == knightPromotion)
-                                    wanted = chess::PieceType::KNIGHT;
-                                if(m.promotionType() == wanted){
-                                    move = m;
-                                    exists = true;
-                                    break;                      
-                                }     
+                                isPromotion = true;
+                                break;
                             }else{
                                 move = m;
                                 exists = true;
                                 break;
                             }
+                        }
+                    }
+
+                    if(isPromotion){
+                        QMenu promMenu(this);
+                        QPoint pos = QCursor::pos();
+
+                        pos.setX(pos.x() + 40);
+                        pos.setY(pos.y() + 40);
+
+                        if(fromSquare / 8 == 6)
+                        {
+                            promMenu.setStyleSheet(
+                                "QMenu {"
+                                "  background-color: grey;"
+                                "  color: white;"
+                                "}"
+                                "QMenu::item {"
+                                "  font-weight: bold;"
+                                "  font-size: 40px;"
+                                "  padding: 0px; margin: 0px; border: 0px;"
+                                "}"
+                                "QMenu::item::selected {"
+                                "  background-color: green;"
+                                "  color: white;"
+                                "  font-weight: bold;"
+                                "  font-size: 50px;"
+                                "  padding: 0px; margin: 0px; border: 0px;"
+                                "}"
+                            );
+                        }else if(fromSquare / 8 == 1){
+                            promMenu.setStyleSheet(
+                                "QMenu {"
+                                "  background-color: grey;"
+                                "  color: black;"
+                                "}"
+                                "QMenu::item {"
+                                "  font-weight: bold;"
+                                "  font-size: 40px;"
+                                "  padding: 0px; margin: 0px; border: 0px;"
+                                "}"
+                                "QMenu::item::selected {"
+                                "  background-color: green;"
+                                "  color: black;"
+                                "  font-weight: bold;"
+                                "  font-size: 50px;"
+                                "  padding: 0px; margin: 0px; border: 0px;"
+                                "}"
+                            );
+                        }
+                        QAction *queenPromotion = promMenu.addAction(QString::fromUtf8("\u265B "));
+                        QAction *rookPromotion = promMenu.addAction(QString::fromUtf8("\u265C "));
+                        QAction *bishopPromotion = promMenu.addAction(QString::fromUtf8("\u265D "));
+                        QAction *knightPromotion = promMenu.addAction(QString::fromUtf8("\u265E "));
+                                
+                        statusLabel->setStyleSheet("color: black; font-weight: bold;");
+                        statusLabel->setText("Promotion in progress. Select promotion figure.\nAnything else won't be considered.");
+                        disconnect(scanner, &BoardScanner::boardState, this, &Dialog::moveMaker);
+                                
+                        promMenu.adjustSize();
+                        promMenu.setFocusPolicy(Qt::NoFocus);
+                        QAction *selected = promMenu.exec(pos);
+                                
+                        chess::PieceType wanted;
+                        if(selected == queenPromotion){
+                            wanted = chess::PieceType::QUEEN;
+                            connect(scanner, &BoardScanner::boardState, this, &Dialog::moveMaker);
+                            statusLabel->clear();
+                                    
+                        }
+                        else if(selected == rookPromotion){
+                            wanted = chess::PieceType::ROOK;
+                            connect(scanner, &BoardScanner::boardState, this, &Dialog::moveMaker);
+                            statusLabel->clear();
+                        }
+                        else if(selected == bishopPromotion){
+                            wanted = chess::PieceType::BISHOP;
+                            connect(scanner, &BoardScanner::boardState, this, &Dialog::moveMaker);
+                            statusLabel->clear();
+                        }
+                        else if(selected == knightPromotion){
+                            wanted = chess::PieceType::KNIGHT;
+                            connect(scanner, &BoardScanner::boardState, this, &Dialog::moveMaker);
+                            statusLabel->clear();                                
+                        }
+                        else{
+                            wanted = chess::PieceType::QUEEN;
+                            connect(scanner, &BoardScanner::boardState, this, &Dialog::moveMaker);
+                            statusLabel->clear();
+                        }
+
+                        for(const auto &m : legal){
+                            if((m.from() == from && m.to() == to) && 
+                               (m.typeOf() == chess::Move::PROMOTION) &&
+                               (m.promotionType() == wanted)){
+                                move = m;
+                                exists = true;
+                                break;                      
+                            }     
                         }
                     }
 
@@ -329,7 +403,7 @@ void Dialog::moveMaker(const int *new_state)
                         return;
                     }
 
-                }else{
+                }else if(!promotionSequenceInProgress){
                     if(nextLegalFromSquare != fromSquare || nextLegalToSquare != toSquare){
                          exists = false;
                     }else{
@@ -352,6 +426,7 @@ void Dialog::moveMaker(const int *new_state)
                   
                         auto result = board.isGameOver();
 
+                        statusLabel->setStyleSheet("color: black; font-weight: bold;");
                         if(result.second != chess::GameResult::NONE){
                             chessClockTimer->stop();
                             switch(result.first)
@@ -405,9 +480,8 @@ void Dialog::moveMaker(const int *new_state)
                         }else if(chess::uci::moveToUci(move) == "e8c8"){
                             statusLabel->setText("Illegal action! Black queenside castling is in the progress.\n Only legal action is placing rook on a8 to d8.");
                         }
-                    }else{
+                    }else
                         statusLabel->setText("Illegal move! Undo move on the board and make legal move.");
-                    }
                     illegal = true;
                 }//exists
             }//if(fromSquare != toSquare)
@@ -449,7 +523,7 @@ void Dialog::moveMaker(const int *new_state)
         
                 if(new_state[sq] != occupied){
                     check_pass = false;
-                 }
+                }
             } //for
 
             if(check_pass)
@@ -473,62 +547,83 @@ void Dialog::moveMaker(const int *new_state)
         refreshField(i/8, i%8);
 } //moveMaker
 
+void Dialog::timerQuery(){
+    QMenu timeMenu(this);
+    QPoint pos = QCursor::pos();
+
+    pos.setX(pos.x() + 50);
+    pos.setY(pos.y() + 50);
+        
+    timeMenu.setTitle("Choose time control");
+    timeMenu.setStyleSheet(
+        "QMenu {"
+        "  background-color: grey;"
+        "  color: white;"
+        "}"
+        "QMenu::item {"
+        "  font-weight: bold;"
+        "  font-size: 40px;"
+        "  padding: 0px; margin: 0px; border: 0px;"
+        "}"
+        "QMenu::item::selected {" 
+        "  background-color: green;"
+        "  color: white;"
+        "  font-weight: bold;"
+        "  font-size: 45px;"
+        "  padding: 0px; margin: 0px; border: 0px;"
+        "}"
+    );
+         
+    QAction *min5 = timeMenu.addAction("05:00 ");
+    QAction *min10 = timeMenu.addAction("10:00 ");
+    QAction *min30 = timeMenu.addAction("30:00 ");
+    QAction *notime = timeMenu.addAction("NONE ");
+
+    timeMenu.setFocusPolicy(Qt::NoFocus);
+    QAction *selected = timeMenu.exec(pos);
+                                
+    no_timer = false;
+
+    if(selected == min5){
+        timeWhite = 300;
+        timeBlack = 300;
+    }
+    else if(selected == min10)
+    {
+        timeWhite = 600;
+        timeBlack = 600;
+    }
+    else if(selected == min30)
+    {
+        timeWhite = 1800;
+        timeBlack = 1800;
+    }else if(selected == notime){
+        no_timer = true;
+        connect(scanner, &BoardScanner::boardState, this, &Dialog::moveMaker);
+    }
+    else{
+        no_timer = true;
+        connect(scanner, &BoardScanner::boardState, this, &Dialog::moveMaker);
+    }
+    if(!no_timer){
+        updateClockStyles();
+        connect(scanner, &BoardScanner::boardState, this, &Dialog::moveMaker);
+        chessClockTimer->start(1000);
+    }                  
+}
+
 void Dialog::parseStockfish(){
     while(stockfish->canReadLine())
     {
         QString line = stockfish->readLine().trimmed();
         
         if(line == "readyok"){
+            statusLabel->clear();
+            statusLabel->setText("Stockfish is ready!");
             /**********************************/
-            QMenu timeMenu(this);
-            QPoint pos = QCursor::pos();
-
-            pos.setX(pos.x() + 10);
-            pos.setY(pos.y() + 10);
-        
-            timeMenu.setTitle("Choose time control");
-            timeMenu.setStyleSheet(
-                "background-color: grey;"
-                "color: white;"
-                "font-weight: bold;"
-                "font-size: 45px;"
-                "padding: 0px; margin: 0px; border: 0px;"
-            );
-         
-            QAction *min5 = timeMenu.addAction("05:00");
-            QAction *min10 = timeMenu.addAction("10:00");
-            QAction *min30 = timeMenu.addAction("30:00");
-            QAction *notime = timeMenu.addAction("NONE");
-
-            timeMenu.setFocusPolicy(Qt::NoFocus);
-            QAction *selected = timeMenu.exec(pos);
-                                
-            no_timer = false;
-
-            if(selected == min5){
-                timeWhite = 300;
-                timeBlack = 300;
-            }
-            else if(selected == min10)
-            {
-                timeWhite = 600;
-                timeBlack = 600;
-            }
-            else if(selected == min30)
-            {
-                timeWhite = 1800;
-                timeBlack = 1800;
-            }else if(selected == notime){
-                no_timer = true;
-            }
-            else{
-                no_timer = true;
-            }
-            if(!no_timer){
-                updateClockStyles();
-                chessClockTimer->start(1000);
-            }                  
+            timerQuery();
             /**********************************/
+            statusLabel->clear();
             QString fen = QString::fromStdString(board.getFen());
             stockfish->write(QString("position fen %1\n").arg(fen).toUtf8());
             stockfish->write("go movetime 150\n");
@@ -794,7 +889,12 @@ void Dialog::update_chess_clocks()
 
 void Dialog::keyPressEvent(QKeyEvent *event){
     if(event->key() == Qt::Key_Escape){  
-        scanner->disconnectService();
+        if(boardFound)
+            scanner->disconnectService();
+        else{
+            qWarning() << "Exiting application...";
+            QTimer::singleShot(2000, qApp, &QApplication::quit);
+        }
     }else{
         QDialog::keyPressEvent(event);
     }

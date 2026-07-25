@@ -20,6 +20,7 @@
 #include <QRegularExpression>
 #include <cmath>
 #include <QApplication>
+#include <QScrollBar>
 
 class Dialog : public QDialog {
     Q_OBJECT
@@ -33,6 +34,7 @@ private slots:
     void moveMaker(const int *new_state);
     void onMessageChanged();
     void onExitReceived();
+    void onConnected();
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -53,9 +55,10 @@ private:
     int fromSquare = -1;
     int toSquare = -1;
     bool illegal;
+    bool boardFound;
    
     int nextLegalFromSquare, nextLegalToSquare;
-    bool exists, castlingSequenceInProgress;
+    bool exists, castlingSequenceInProgress, promotionSequenceInProgress;
  
 
     QTimer *scanningTimer;
@@ -81,6 +84,7 @@ private:
     void refreshField(int r, int c);
     void boardInit();
     void updateClockStyles();
-    void parseStockfish(); 
+    void parseStockfish();
+    void timerQuery(); 
 };
 #endif
